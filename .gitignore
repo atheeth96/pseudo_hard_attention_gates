@@ -14,7 +14,7 @@ app/__pycache__/
 *.tiff
 *.sql
 *.sqlite
-
+*.xml
 
 #folders
 *model*
