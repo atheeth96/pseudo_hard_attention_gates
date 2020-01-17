@@ -12,14 +12,17 @@ app/__pycache__/
 *.jpeg
 *.tif
 *.tiff
+
+#files
 *.sql
 *.sqlite
 *.xml
-
+unet_nuclear_seg.ipynb
+nuclei_seg_v1.ipynb
 #folders
 *model*
 *map*
-
+/4_class
 # OS generated files #
 ######################
 .DS_Store
