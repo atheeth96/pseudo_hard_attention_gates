@@ -228,7 +228,10 @@ class AttnUNet(nn.Module):
         super().__init__()
 
         self.Maxpool = nn.MaxPool2d(kernel_size=2,stride=2)
-        self.dropout=torch.nn.Dropout(dropout)
+        if dropout is not None:
+            self.dropout=torch.nn.Dropout(dropout)
+        else:
+            self.dropout=dropout
 
         self.Conv1 = conv_block(ch_in=img_ch,ch_out=64)
         self.Conv2 = conv_block(ch_in=64,ch_out=128)
@@ -270,7 +273,8 @@ class AttnUNet(nn.Module):
 
         x5 = self.Maxpool(x4)
         x5 = self.Conv5(x5)
-        x5=self.dropout(x5)
+        if self.dropout is not None:
+            x5=self.dropout(x5)
 
         # decoding + concat path
         d5 = self.Up5(x5)
@@ -349,10 +353,14 @@ class FFM(nn.Module):
     
     
 class DualEncoding_U_Net(nn.Module):
-    def __init__(self,img1_ch=3,img2_ch=1,output_ch=2):
+    def __init__(self,img1_ch=3,img2_ch=1,output_ch=2,dropout=0.25):
         super().__init__()
 
         self.Maxpool = nn.MaxPool2d(kernel_size=2,stride=2)
+        if dropout is not None:
+            self.dropout=torch.nn.Dropout(dropout)
+        else:
+            self.dropout=dropout
 
         self.Conv1_encoding_1 = conv_block(ch_in=img1_ch,ch_out=64)
         self.Conv2_encoding_1 = conv_block(ch_in=64,ch_out=128)
@@ -374,7 +382,7 @@ class DualEncoding_U_Net(nn.Module):
         self.asm2=ASM(512,256)
         self.asm1=ASM(1024,512)
       
-        self.dropout=nn.Dropout(0.45)
+        
 
         self.Up5 = up_conv(ch_in=1024,ch_out=512)
         self.Up_conv5 = nn.Sequential(nn.Conv2d(1024,512,kernel_size=1,stride=1,padding=0,bias=True),
@@ -431,9 +439,14 @@ class DualEncoding_U_Net(nn.Module):
         x_e4 = self.Maxpool(x_e3)
         x_e4 = self.Conv4_encoding_2(x_e4)
         # N*512*16*16
-    
-        lat_spc=self.Conv5_encoding_1(x_h4)
+        
+        if self.dropout is not None:
+            lat_spc=self.dropout(x_h4)
+            lat_spc=self.Conv5_encoding_1(lat_spc)
+        else:
+            lat_spc=self.Conv5_encoding_1(x_h4)
         lat_spc=self.Maxpool(lat_spc)
+        
         # N*1024*8*8
       
         
