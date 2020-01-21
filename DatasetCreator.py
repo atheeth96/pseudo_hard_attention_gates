@@ -14,12 +14,13 @@ from tqdm import tqdm_notebook as tqdm
 
 def convert_to_png(tif_dir,png_dir):
     images_name=[x for x in os.listdir(tif_dir) if '.tif' in x]
+    
     if not os.path.exists(png_dir):
         os.mkdir(png_dir)
         print("made dir {}".format(png_dir))
-    for c,im in tqdm(enumerate(images_name)):
+    for im in tqdm(images_name):
         img_name=im
-        img=imread(im)
+        img=imread(os.path.join(tif_dir,im))
         img_name=img_name.replace('.tif','.png')    
         imsave(os.path.join(png_dir,img_name),img)
         
