@@ -11,7 +11,7 @@ app/__pycache__/
 *.jpeg
 *.tif
 *.tiff
-
+*.npy
 #files
 *.sql
 *.sqlite
