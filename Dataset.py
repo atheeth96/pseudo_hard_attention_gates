@@ -1,4 +1,7 @@
 from skimage.io import imread
+from skimage.filters import gaussian,median
+from skimage.transform import rotate
+from skimage.morphology import disk
 import numpy as np
 import os
 import skimage
@@ -56,6 +59,7 @@ class DataSet(Dataset):
             
         else:
             h_img =imread(h_img_path)
+         
         
         
         nuclei_mask=np.expand_dims(imread(nuclei_mask_path),axis=2)
@@ -81,9 +85,10 @@ class Scale(object):
         
  
         scale=255
+        h=1-h/scale
 
         return {'h_e': h_e/scale,\
-                'h':h/scale,\
+                'h':h,\
                 'nuclei_mask':nuclei_mask/scale,\
                 'boundary_mask':boundary_mask/scale}
 
@@ -103,10 +108,155 @@ class ToTensor(object):
         nuclei_mask = nuclei_mask.transpose((2, 0, 1))
         boundary_mask = boundary_mask.transpose((2, 0, 1))
         
+        return {'h_e': torch.from_numpy(h_e).type(torch.FloatTensor),\
+                'h':torch.from_numpy(h).type(torch.FloatTensor),\
+                'nuclei_mask':torch.from_numpy(nuclei_mask).type(torch.FloatTensor),\
+                'boundary_mask':torch.from_numpy(boundary_mask).type(torch.FloatTensor)}
+    
+    
+class RandomGaussionBlur(object):
+    """Apply gaussian blur to ndarrays in sample."""
+    def __init__(self,p,sigma=1,truncate=3,apply_dual=False):
+        self.p=p
+        self.sigma=sigma
+        self.truncate=truncate
+        self.apply_dual=apply_dual
+    
+
+    def __call__(self, sample):
+        h_e,h,nuclei_mask,boundary_mask=sample['h_e'],sample['h'],sample['nuclei_mask'],sample['boundary_mask']
+
+        # swap color axis because
+        # numpy image: H x W x C
+        # torch image: C X H X W
+        if random.random() < self.p:
+            if self.apply_dual:
+                h_e= skimage.filters.gaussian(h_e, sigma=self.sigma, output=None, \
+                           mode='nearest', cval=0, multichannel=None, \
+                           preserve_range=False, truncate=self.truncate)
+                h= skimage.filters.gaussian(h, sigma=self.sigma, output=None, \
+                           mode='nearest', cval=0, multichannel=None, \
+                           preserve_range=False, truncate=3)
+            else:
+                h_e= skimage.filters.gaussian(h_e, sigma=self.sigma, output=None, \
+                           mode='nearest', cval=0, multichannel=None, \
+                           preserve_range=False, truncate=self.truncate)
+            
+               
         return {'h_e': h_e,\
                 'h':h,\
                 'nuclei_mask':nuclei_mask,\
                 'boundary_mask':boundary_mask}
+    
+    
+class RandomMedianBlur(object):
+    """Apply gaussian blur to ndarrays in sample."""
+    def __init__(self,p=0.2,disk_rad=2,apply_dual=False):
+        self.p=p
+        self.disk_rad=disk_rad
+        self.apply_dual=apply_dual
+    
+
+    def __call__(self, sample):
+        h_e,h,nuclei_mask,boundary_mask=sample['h_e'],sample['h'],sample['nuclei_mask'],sample['boundary_mask']
+
+        # swap color axis because
+        # numpy image: H x W x C
+        # torch image: C X H X W
+        if random.random() < self.p:
+            if self.apply_dual:
+                h_e= median(h_e, selem=np.stack((disk(self.disk_rad),disk(self.disk_rad),disk(self.disk_rad)),axis=2))
+                h= median(h, disk(self.disk_rad))
+            else:
+                h_e= median(h_e, selem=np.stack((disk(self.disk_rad),disk(self.disk_rad),disk(self.disk_rad)),axis=2))
+            
+               
+        return {'h_e': h_e,\
+                'h':h,\
+                'nuclei_mask':nuclei_mask,\
+                'boundary_mask':boundary_mask}
+    
+    
+class RandomHorizontalFlip(object):
+    """Horizontally flip the given PIL Image randomly with a given probability.
+
+    Args:
+        p (float): probability of the image being flipped. Default value is 0.5
+    """
+
+    def __init__(self, p=0.5):
+        self.p = p
+
+    def __call__(self, sample):
+        
+        h_e,h,nuclei_mask,boundary_mask=sample['h_e'],sample['h'],sample['nuclei_mask'],sample['boundary_mask']
+        """
+        Args:
+            sample 
+
+        Returns:
+            PIL Image: Randomly flipped image.
+        """
+        if random.random() < self.p:
+            h_e= h_e[ ::-1,:]
+            h= h[ ::-1,:]
+            nuclei_mask= nuclei_mask[ ::-1,:]
+            boundary_mask= boundary_mask[ ::-1,:]
+        return {'h_e': h_e,\
+                'h':h,\
+                'nuclei_mask':nuclei_mask,\
+                'boundary_mask':boundary_mask}
+    
+    
+class RandomRotation(object):
+    """Rotate the image by angle.
+
+    Args:
+        degrees (sequence or float or int): Range of degrees to select from.
+            If degrees is a number instead of sequence like (min, max), the range of degrees
+            will be (-degrees, +degrees).
+
+    """
+
+    def __init__(self, degrees=[60,120],p=1):
+        
+        self.degrees = degrees
+        self.p=p
+
+        
+
+    @staticmethod
+    def get_params(degrees):
+        """Get parameters for ``rotate`` for a random rotation.
+
+        Returns:
+            sequence: params to be passed to ``rotate`` for random rotation.
+        """
+        angle = random.uniform(degrees[0], degrees[1])
+
+        return angle
+
+    def __call__(self, sample):
+        
+        h_e,h,nuclei_mask,boundary_mask=sample['h_e'],sample['h'],sample['nuclei_mask'],sample['boundary_mask']
+        
+        if random.random() < self.p:
+        
+            angle = self.get_params(self.degrees)
+            
+            h_e= rotate(h_e, angle)
+            h= rotate(h, angle)
+            nuclei_mask= rotate(nuclei_mask, angle)
+            boundary_mask= rotate(boundary_mask, angle)
+        return {'h_e': h_e,\
+                'h':h,\
+                'nuclei_mask':nuclei_mask,\
+                'boundary_mask':boundary_mask}
+
+        
+
+        return 
+
     
 
 

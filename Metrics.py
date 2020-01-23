@@ -4,6 +4,9 @@ import torch.nn.functional as F
 from torch.nn import init
 
 
+
+
+
 def dice_metric(y_pred,y_true):
     smooth = 1
     num = y_true.size(0)
@@ -57,3 +60,26 @@ class SoftDiceLoss(nn.Module):
         score = 2. * (intersection.sum(1) + smooth) / (m1.sum(1) + m2.sum(1) + smooth)
         score = 1 - score.sum() / num
         return score
+    
+    
+    
+class DE_loss(nn.Module):
+    def __init__(self,dice_coeff=0.02):
+        self.dice_coeff=dice_coeff
+        super().__init__()
+
+    def forward(self, logits, targets):
+        bce=nn.BCELoss()(logits,targets)
+        smooth = 1
+        num = targets.size(0)
+        
+        m1 = logits.view(num, -1)
+        m2 = targets.view(num, -1)
+        intersection = (m1 * m2)
+
+        dice_loss = 2. * (intersection.sum(1) + smooth) / (m1.sum(1) + m2.sum(1) + smooth)
+        dice_loss = 1 - dice_loss.sum() / num
+        return dice_loss*self.dice_coeff + bce
+    
+    
+    
