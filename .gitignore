@@ -22,6 +22,7 @@ nuclei_seg_v1.ipynb
 *model*
 *map*
 /4_class
+other_data/
 # OS generated files #
 ######################
 .DS_Store
