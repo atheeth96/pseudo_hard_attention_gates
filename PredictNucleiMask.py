@@ -37,7 +37,7 @@ import cv2
 
 
 
-def whole_img_pred(h_e_path,h_path,pred_dir_name,model,print_prompt=False):
+def whole_img_pred(h_e_path,h_path,pred_dir_name,model,predict_boundary=False,patch_size=256,print_prompt=False):
     
     pred_dir=os.path.join(os.getcwd(),pred_dir_name)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -52,7 +52,7 @@ def whole_img_pred(h_e_path,h_path,pred_dir_name,model,print_prompt=False):
         if print_prompt:
             print("{} directory already exists in {}".format(pred_dir.split('/')[-1],'/'.join(pred_dir.split('/')[:-1])))
         
-    step_size=128
+    step_size=patch_size
 
 
     h_e_image=imread(h_e_path)
@@ -61,14 +61,14 @@ def whole_img_pred(h_e_path,h_path,pred_dir_name,model,print_prompt=False):
     
     r,c=h_e_image.shape[:2]#4663,3881
 
-    new_r_count=(math.ceil((r-128)/128)+1)#5
-    new_c_count=(math.ceil((c-128)/128)+1)#5
+    new_r_count=(math.ceil((r-patch_size)/patch_size)+1)#5
+    new_c_count=(math.ceil((c-patch_size)/patch_size)+1)#5
 
 
-    pad_r1=((new_r_count-1)*128-r+128)//2 #200
-    pad_r2=((new_r_count-1)*128-r+128)-pad_r1 #200
-    pad_c1=((new_c_count-1)*128-c+128)//2 #0
-    pad_c2=((new_c_count-1)*128-c+128)-pad_c1#0
+    pad_r1=((new_r_count-1)*patch_size-r+patch_size)//2 #200
+    pad_r2=((new_r_count-1)*patch_size-r+patch_size)-pad_r1 #200
+    pad_c1=((new_c_count-1)*patch_size-c+patch_size)//2 #0
+    pad_c2=((new_c_count-1)*patch_size-c+patch_size)-pad_c1#0
 
     h_e_image_padded=np.pad(h_e_image, [(pad_r1,pad_r2),(pad_c1,pad_c2),(0,0)], 'constant',\
                             constant_values=0)
@@ -76,10 +76,10 @@ def whole_img_pred(h_e_path,h_path,pred_dir_name,model,print_prompt=False):
                             constant_values=0)
 
 
-    window_shape=(128,128)
+    window_shape=(patch_size,patch_size)
 
     h_e_img_patches=skimage.util.view_as_windows(h_e_image_padded, (*window_shape,3), step=step_size)
-    h_e_img_patches=h_e_img_patches.reshape((-1,128,128,3))
+    h_e_img_patches=h_e_img_patches.reshape((-1,patch_size,patch_size,3))
     h_e_img_patches=h_e_img_patches.transpose((0,3,2,1))/255
    
     
@@ -89,7 +89,7 @@ def whole_img_pred(h_e_path,h_path,pred_dir_name,model,print_prompt=False):
             
             
     h_img_patches=skimage.util.view_as_windows(h_image_padded, window_shape, step=step_size)
-    h_img_patches=h_img_patches.reshape((-1,128,128))
+    h_img_patches=h_img_patches.reshape((-1,patch_size,patch_size))
     h_img_patches=h_img_patches.transpose((0,2,1))
     h_img_patches=np.expand_dims(h_img_patches,axis=1)/255
    
@@ -99,7 +99,8 @@ def whole_img_pred(h_e_path,h_path,pred_dir_name,model,print_prompt=False):
 #         h_img_patches[i]=h_img_patches[i]/max_patch_level_h[i]
 
     nuclei_temp=[]
-    bound_temp=[]
+    if predict_boundary:
+        bound_temp=[]
 
     for i in range(new_r_count):
 
@@ -108,42 +109,45 @@ def whole_img_pred(h_e_path,h_path,pred_dir_name,model,print_prompt=False):
         pred=torch.sigmoid(model(temp_h_e_img_patches,temp_h_img_patches))
         
         del temp_h_e_img_patches,temp_h_img_patches
-
-        nuclei,bound=torch.chunk(pred,2,dim=1)
+        if predict_boundary:
+            nuclei,bound=torch.chunk(pred,2,dim=1)
+            nuclei,bound=nuclei.detach().cpu().numpy(),bound.detach().cpu().numpy()
+        else:
+            nuclei=pred.detach().cpu().numpy()
+            
         
         del pred
         
-        nuclei,bound=nuclei.detach().cpu().numpy(),bound.detach().cpu().numpy()
+        
 
         nuclei=np.squeeze(nuclei,axis=1).transpose((0,2,1))
         nuclei=np.concatenate(nuclei,axis=1)
         nuclei_temp.append(nuclei)
-
-        bound=np.squeeze(bound,axis=1).transpose((0,2,1))
-        bound=np.concatenate(bound,axis=1)
-        bound_temp.append(bound)
+        if predict_boundary:
+            bound=np.squeeze(bound,axis=1).transpose((0,2,1))
+            bound=np.concatenate(bound,axis=1)
+            bound_temp.append(bound)
 
     nuclei_temp=np.array(nuclei_temp)
     nuclei_temp=np.concatenate(nuclei_temp,axis=0)
-
-    bound_temp=np.array(bound_temp)
-    bound_temp=np.concatenate(bound_temp,axis=0)
-
     nuclei_temp=nuclei_temp[pad_r1:nuclei_temp.shape[0]-pad_r2,pad_c1:nuclei_temp.shape[1]-pad_c2]*255
-    bound_temp=bound_temp[pad_r1:bound_temp.shape[0]-pad_r2,pad_c1:bound_temp.shape[1]-pad_c2]*255
-
     nuclei_temp=nuclei_temp.astype(np.uint8)
-    bound_temp=bound_temp.astype(np.uint8)
+    imsave(pred_dir_name+'/nuclei_'+img_name,nuclei_temp)
+    
+    if predict_boundary:
+
+        bound_temp=np.array(bound_temp)
+        bound_temp=np.concatenate(bound_temp,axis=0)
+        bound_temp=bound_temp[pad_r1:bound_temp.shape[0]-pad_r2,pad_c1:bound_temp.shape[1]-pad_c2]*255
+        bound_temp=bound_temp.astype(np.uint8)
+        imsave(pred_dir_name+'/bound_'+img_name,bound_temp)
 
     
 #         nuclei_thresh=threshold_otsu(nuclei_temp)
 #         nucei_thresholded=nuclei_temp>nuclei_thresh
 
 
-
-    imsave(pred_dir_name+'/bound_'+img_name,bound_temp)
-
-    imsave(pred_dir_name+'/nuclei_'+img_name,nuclei_temp)
+    
     if print_prompt:
         print('Done')
 

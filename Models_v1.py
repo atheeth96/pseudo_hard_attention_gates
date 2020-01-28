@@ -316,58 +316,24 @@ class ChannelPool(nn.Module):
     
 
     
-# class ASM(nn.Module):
-#     def __init__(self,F_ip,F_int):
-#         super().__init__()
-#         self.ChannelPool = ChannelPool(F_int)
-#         self.W_1x1 = nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True)
-#         self.batch_norm=nn.BatchNorm2d(F_int)
-
-#     def forward(self,map_1_fm,map_2_fm):
-        
-#         x=torch.cat((map_1_fm,map_2_fm),dim=1)
-#         x1=self.ChannelPool(x)
-#         psi=self.W_1x1(x)
-#         psi=torch.sigmoid(psi)
-#         psi=self.batch_norm(psi)
-        
-
-#         return psi*x1
-    
 class ASM(nn.Module):
-    def __init__(self,F_int,F_ip):
+    def __init__(self,F_ip,F_int):
         super().__init__()
-        
-        self.W_e1 = nn.Sequential(
-        nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
-        nn.BatchNorm2d(F_int)
-        )
-
-        self.W_e2 = nn.Sequential(
-        nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
-        nn.BatchNorm2d(F_int)
-        )
-
-        self.psi = nn.Sequential(
-        nn.Conv2d(F_int, 1, kernel_size=1,stride=1,padding=0,bias=True),
-        nn.BatchNorm2d(1),
-        nn.Sigmoid()
-        )
-
-        self.relu = nn.ReLU(inplace=True)
-        
-#         self.ChannelPool = ChannelPool(F_int)
-        self.W_1x1 = nn.Conv2d(F_int, F_ip, kernel_size=1,stride=1,padding=0,bias=True)
+        self.ChannelPool = ChannelPool(F_int)
+        self.W_1x1 = nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True)
         self.batch_norm=nn.BatchNorm2d(F_int)
 
     def forward(self,map_1_fm,map_2_fm):
-        x1 = self.W_e1(map_1_fm)
-        x2 = self.W_e2(map_2_fm)
-        x3 = self.W_1x1(x1)
-        psi = self.relu(x2+x1)
-        psi = self.psi(psi)
-       
-        return psi*x3
+        
+        x=torch.cat((map_1_fm,map_2_fm),dim=1)
+        x1=self.ChannelPool(x)
+        psi=self.W_1x1(x)
+        psi=torch.sigmoid(psi)
+        psi=self.batch_norm(psi)
+        
+
+        return psi*x1
+
     
 class FFM(nn.Module):
     
@@ -379,9 +345,7 @@ class FFM(nn.Module):
         nn.ReLU(inplace=True)
         )
 #         self.ChannelPool = ChannelPool(F_int)
-#         self.W_1x1 = nn.Conv2d(F_int, F_int, kernel_size=1,stride=1,padding=0,bias=True)
-#         self.W_1x1 = nn.Conv2d(F_int, F_int, kernel_size=1,stride=1,padding=0,bias=True)
-        self.W_1x1 = nn.Conv2d(F_int, 1, kernel_size=1,stride=1,padding=0,bias=True)
+        self.W_1x1 = nn.Conv2d(F_int, F_int, kernel_size=1,stride=1,padding=0,bias=True)
         self.batch_norm=nn.BatchNorm2d(F_int)
       
 

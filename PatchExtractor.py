@@ -33,7 +33,7 @@ import time
 import math
 
 import random
-from tqdm import tqdm_notebook as tqdm 
+from tqdm import tqdm 
 
 class PatchExtractor():
     def __init__(self,h_e_dir,h_dir,nuclei_mask_dir\

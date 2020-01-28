@@ -133,14 +133,16 @@ class RandomGaussionBlur(object):
             if self.apply_dual:
                 h_e= skimage.filters.gaussian(h_e, sigma=self.sigma, output=None, \
                            mode='nearest', cval=0, multichannel=None, \
-                           preserve_range=False, truncate=self.truncate)
+                           preserve_range=False, truncate=self.truncate)*255
                 h= skimage.filters.gaussian(h, sigma=self.sigma, output=None, \
                            mode='nearest', cval=0, multichannel=None, \
                            preserve_range=False, truncate=3)
             else:
                 h_e= skimage.filters.gaussian(h_e, sigma=self.sigma, output=None, \
                            mode='nearest', cval=0, multichannel=None, \
-                           preserve_range=False, truncate=self.truncate)
+                           preserve_range=False, truncate=self.truncate)*255
+                
+        
             
                
         return {'h_e': h_e,\
@@ -286,6 +288,7 @@ def visualize_loader(loader,index=0):
             boundary_mask=(sample['boundary_mask'][index]).numpy()
             
             h_e=h_e.transpose(1,2,0)
+            
             h=np.squeeze(h.transpose(1,2,0),axis=2)
             
             nuclei_mask=np.squeeze(nuclei_mask.transpose(1,2,0),axis=2)
