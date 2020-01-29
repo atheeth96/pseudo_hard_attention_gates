@@ -177,6 +177,15 @@ class Attention_block(nn.Module):
         return x*psi
 
 class U_Net(nn.Module):
+    
+    '''
+    Implementation of U-Net from "U-net:Convolutionalnetworks for biomedical image segmentation,” in International Conference on     Medicalimagecomputingandcomputer-assistedintervention. Springer, 2015
+    
+        Arguments :
+            img_ch      : Number of channels in input image
+            output_ch   : Number of channels in output image  
+            dropout     : dropout rate to be applied to the connections going to latent space
+    '''
     def __init__(self,img_ch=3,output_ch=1,dropout=0.45):
         super().__init__()
 
@@ -244,6 +253,17 @@ class U_Net(nn.Module):
         return d1
 
 class AttnUNet(nn.Module):
+    
+    '''
+    Implementation of Attention U-Net from "Attention U-Net: Learning Where to Look for the Pancreas" 2018
+    
+        Arguments :
+            img_ch      : Number of channels in input image
+            output_ch   : Number of channels in output image  
+            dropout     : dropout rate to be applied to the connections going to latent space
+    '''
+    
+    
     def __init__(self,img_ch=1,output_ch=1,dropout=0.45):
         super().__init__()
 
@@ -324,6 +344,14 @@ class AttnUNet(nn.Module):
     
 class ChannelPool(nn.Module):
     
+    '''
+    Implementation of Channel wise max pooling 
+    
+        Arguments :
+            out_channels : Number of channels in output image 
+    '''
+    
+    
     def __init__(self, out_channels):
         super().__init__()
         self.out_channels = out_channels
@@ -355,6 +383,16 @@ class ChannelPool(nn.Module):
 #         return psi*x1
     
 class ASM(nn.Module):
+    
+    '''
+    Implementation of Attention Skip Module
+    
+        Arguments :
+            F_int : Number of channels in output feature map 
+            F_ip  : Number of channels in input feature map 
+    '''
+    
+    
     def __init__(self,F_int,F_ip):
         super().__init__()
         
@@ -391,6 +429,14 @@ class ASM(nn.Module):
     
 class FFM(nn.Module):
     
+    '''
+    Implementation of Final Fussion Module
+    
+        Arguments :
+            F_int : Number of channels in intermediate feature map 
+ 
+    '''
+    
     def __init__(self,F_int):
         super().__init__()
         self.W_x = nn.Sequential(
@@ -420,6 +466,19 @@ class FFM(nn.Module):
     
     
 class DualEncoding_U_Net(nn.Module):
+    
+    '''
+    Implementation of Dual encoding U-Net
+    
+        Arguments :
+            img1_ch     : Number of channels in first image input
+            img2_ch     : Number of channels in second image input
+            output_ch   : Number of channels in output input
+            dropout     : dropout rate to be applied to the connections going to latent space
+            include_ffm : Boolean value to determine if second encoding path is to be fused with latent space
+ 
+    '''
+
     def __init__(self,img1_ch=3,img2_ch=1,output_ch=2,dropout=0.25,include_ffm=True):
         super().__init__()
         self.include_ffm=include_ffm
@@ -577,6 +636,20 @@ class DualEncoding_U_Net(nn.Module):
     
     
 class DualEncodingDecoding_U_Net(nn.Module):
+    
+    '''
+    Implementation of Dual encoding and Dual decoding U-Net
+    
+        Arguments :
+            img1_ch     : Number of channels in first image input
+            img2_ch     : Number of channels in second image input
+            output_ch   : Number of channels in output input
+            dropout     : dropout rate to be applied to the connections going to latent space
+            
+ 
+    '''
+
+    
     def __init__(self,img_ch1=3,img_ch2=1,output_ch=1,dropout=0.45):
         super().__init__()
 
