@@ -4,8 +4,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
 
+# Functions to initialize Weight of network
 
 def init_weights(net, init_type='normal', gain=0.02):
+    
+    '''
+        Arguments :
+            net       : the model whose weights have to be initialized
+            init_type : The type if initialization to perform on the weights  
+    '''
+    
     def init_func(m):
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
@@ -28,24 +36,17 @@ def init_weights(net, init_type='normal', gain=0.02):
     print('initialized network with {} initialization'.format(init_type))
     net.apply(init_func)
 
-
-
-def dice_metric(y_pred,y_true):
-    smooth = 1
-    num = y_true.size(0)
-    m1 = y_pred.view(num, -1)
-    m2 = y_true.view(num, -1)
-    
-        
-    intersection = (m1* m2)
-
-    score = 2. * (intersection.sum(1) + smooth) / (m1.sum(1) + m2.sum(1) + smooth)
-    score = score.sum() / num
-        
-    return score
-
+# Function to save the model, the optimizer and scheduler 
 
 def save_model(model,optimizer,name,scheduler=None):
+    '''
+        Arguments :
+            model       : the model whose weights have to be initialized
+            optimizer   : The optimizer used 
+            scheduler . : scheduler if present
+    '''
+    
+    
     if scheduler==None:
         checkpoint = {
         'state_dict': model.state_dict(),
@@ -58,7 +59,20 @@ def save_model(model,optimizer,name,scheduler=None):
 
     torch.save(checkpoint,name)
 
+    
+# Function to load the model optimizer and scheduler state_dict 
+
 def load_model(filename,model,optimizer=None,scheduler=None):
+    
+    '''
+        Arguments :
+            filename       : file name/path of the model weights have to be initialized
+            model          : Model architecture
+            optimizer      : The optimizer used 
+            scheduler      : scheduler if present
+    '''
+    
+    
     checkpoint=torch.load(filename)
     model.load_state_dict(checkpoint['state_dict'])
     print("Done loading")
@@ -69,32 +83,20 @@ def load_model(filename,model,optimizer=None,scheduler=None):
         scheduler.load_state_dict(checkpoint['optimizer'])
         print(scheduler.state_dict()['param_groups'][-1]['lr'],' : Learning rate')
 
-def init_weights(net, init_type='normal', gain=0.02):
-    def init_func(m):
-        classname = m.__class__.__name__
-        if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
-            if init_type == 'normal':
-                init.normal_(m.weight.data, 0.0, gain)
-            elif init_type == 'xavier':
-                init.xavier_normal_(m.weight.data, gain=gain)
-            elif init_type == 'kaiming':
-                init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
-            elif init_type == 'orthogonal':
-                init.orthogonal_(m.weight.data, gain=gain)
-            else:
-                raise NotImplementedError('initialization method {} is not implemented in pytorch'.format(init_type))
-            if hasattr(m, 'bias') and m.bias is not None:
-                init.constant_(m.bias.data, 0.0)
-        elif classname.find('BatchNorm2d') != -1:
-            init.normal_(m.weight.data, 1.0, gain)
-            init.constant_(m.bias.data, 0.0)
-
-    print('initialized network with {} initialization'.format(init_type))
-    net.apply(init_func)
-
+# a single conv_block used in U-Net and its variants
 
 class conv_block(nn.Module):
+    
+    '''
+        Arguments :
+            ch_in       : Number of channels in input tensor along dim =1
+            ch_out      : Number of channels required  in out tensor along dim =1
+
+    '''
+    
+    
     def __init__(self,ch_in,ch_out):
+        
         super().__init__()
         self.conv = nn.Sequential(
         nn.Conv2d(ch_in, ch_out, kernel_size=3,stride=1,padding=1,bias=True),
@@ -112,6 +114,13 @@ class conv_block(nn.Module):
 
 
 class up_conv(nn.Module):
+    
+    '''
+        Arguments :
+            ch_in       : Number of channels in input tensor along dim =1
+            ch_out      : Number of channels required  in out tensor along dim =1
+
+    '''
     def __init__(self,ch_in,ch_out):
         super().__init__()
         self.up = nn.Sequential(
@@ -128,7 +137,18 @@ class up_conv(nn.Module):
 
 
 class Attention_block(nn.Module):
+    
+    '''
+        Arguments :
+            F_g         : Number of channels in skip connection tensor along dim =1
+            F_l         : Number of channels in the current expanding path out tensor along dim =1
+            F_int       : Number of channels in the intermediate state required
+
+    '''
+    
     def __init__(self,F_g,F_l,F_int):
+        
+        
         super().__init__()
         self.W_g = nn.Sequential(
         nn.Conv2d(F_g, F_int, kernel_size=1,stride=1,padding=0,bias=True),
@@ -381,7 +401,7 @@ class FFM(nn.Module):
 #         self.ChannelPool = ChannelPool(F_int)
 #         self.W_1x1 = nn.Conv2d(F_int, F_int, kernel_size=1,stride=1,padding=0,bias=True)
 #         self.W_1x1 = nn.Conv2d(F_int, F_int, kernel_size=1,stride=1,padding=0,bias=True)
-        self.W_1x1 = nn.Conv2d(F_int, 1, kernel_size=1,stride=1,padding=0,bias=True)
+        self.W_1x1 = nn.Conv2d(F_int, F_int, kernel_size=1,stride=1,padding=0,bias=True)
         self.batch_norm=nn.BatchNorm2d(F_int)
       
 

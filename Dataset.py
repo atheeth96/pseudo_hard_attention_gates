@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 class DataSet(Dataset):
-    """Face Landmarks dataset."""
+    """H&E and H dataset."""
 
     def __init__(self, h_e_dir,h_dir,nuclei_mask_dir, boundary_mask_dir, transform=None,attn_gray=True):
         
@@ -30,6 +30,7 @@ class DataSet(Dataset):
         self.attn_gray=attn_gray
   
         self.img_list=[x for x in os.listdir(self.h_e_dir) if x.split('.')[-1]=='png']
+    
 #Returns length of data-set unlike its keras counter part that returns no_batches
     def __len__(self):
         return len(self.img_list)
@@ -197,7 +198,7 @@ class RandomHorizontalFlip(object):
             sample 
 
         Returns:
-            PIL Image: Randomly flipped image.
+             Image: Randomly flipped image.
         """
         if random.random() < self.p:
             h_e= h_e[ ::-1,:]
@@ -275,7 +276,8 @@ class  Color:
    END = '\033[0m'
     
     
-    
+# Function to visualize data loader 
+
 def visualize_loader(loader,index=0):
     for i,sample in enumerate(loader):
         #print(sample['image'].shape)
