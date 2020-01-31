@@ -58,6 +58,8 @@ def whole_img_pred(h_e_path,h_path,pred_dir_name,model,predict_boundary=False,pa
     h_e_image=imread(h_e_path)
     img_name=h_e_path.split('/')[-1]
     h_image=imread(h_path)
+    h_image=np.amax(h_image)-h_image
+#     h_image=imread(h_path)
     
     r,c=h_e_image.shape[:2]#4663,3881
 
@@ -92,6 +94,7 @@ def whole_img_pred(h_e_path,h_path,pred_dir_name,model,predict_boundary=False,pa
     h_img_patches=h_img_patches.reshape((-1,patch_size,patch_size))
     h_img_patches=h_img_patches.transpose((0,2,1))
     h_img_patches=np.expand_dims(h_img_patches,axis=1)/255
+   
    
     
 #     max_patch_level_h=np.amax(h_img_patches,axis=(1,2,3)).reshape(-1)

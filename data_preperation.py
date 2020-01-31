@@ -24,7 +24,7 @@ This script converts the xml files to 2 binary images (one for boundary maps and
 
 '''
 
-png_dir='norm_ideal'                              #The directory with converted tif images in png format
+png_dir='png_images'                              #The directory with converted tif images in png format
 annotation_dir='Annotations'                      #The directory with Annotation files
 nucleus_dir='processed_data/nucleus_maps'         #The directory (need not be created) to store nuclei maps
 boundary_dir='processed_data/boundary_maps'       #The directory (need not be created) to store boundary maps

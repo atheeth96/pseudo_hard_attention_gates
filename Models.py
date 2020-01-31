@@ -6,12 +6,12 @@ from torch.nn import init
 
 # Functions to initialize Weight of network
 
-def init_weights(net, init_type='normal', gain=0.02):
+def init_weights(model, init_type='normal', gain=0.02):
     
     '''
         Arguments :
-            net       : the model whose weights have to be initialized
-            init_type : The type if initialization to perform on the weights  
+            model       : the model whose weights have to be initialized
+            init_type   : The type if initialization to perform on the weights  
     '''
     
     def init_func(m):
@@ -34,7 +34,7 @@ def init_weights(net, init_type='normal', gain=0.02):
             init.constant_(m.bias.data, 0.0)
 
     print('initialized network with {} initialization'.format(init_type))
-    net.apply(init_func)
+    model.apply(init_func)
 
 # Function to save the model, the optimizer and scheduler 
 
@@ -416,7 +416,53 @@ class ASM(nn.Module):
         
 #         self.ChannelPool = ChannelPool(F_int)
         self.W_1x1 = nn.Conv2d(F_int, F_ip, kernel_size=1,stride=1,padding=0,bias=True)
-        self.batch_norm=nn.BatchNorm2d(F_int)
+       
+
+    def forward(self,map_1_fm,map_2_fm):
+        x1 = self.W_e1(map_1_fm)
+        x2 = self.W_e2(map_2_fm)
+        x3 = self.W_1x1(x1)
+        psi = self.relu(x2+x1)
+        psi = self.psi(psi)
+       
+        return psi*x3
+    
+    
+class BEM(nn.Module):
+    
+    '''
+    Implementation of Boundary Enhance Module
+    
+        Arguments :
+            F_int : Number of channels in output feature map 
+            F_ip  : Number of channels in input feature map 
+    '''
+    
+    
+    def __init__(self,F_int,F_ip):
+        super().__init__()
+        
+        self.W_e1 = nn.Sequential(
+        nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
+        nn.BatchNorm2d(F_int)
+        )
+
+        self.W_e2 = nn.Sequential(
+        nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
+        nn.BatchNorm2d(F_int)
+        )
+
+        self.psi = nn.Sequential(
+        nn.Conv2d(F_int, 1, kernel_size=1,stride=1,padding=0,bias=True),
+        nn.BatchNorm2d(1),
+        nn.Sigmoid()
+        )
+
+        self.relu = nn.ReLU(inplace=True)
+        
+#         self.ChannelPool = ChannelPool(F_int)
+        self.W_1x1 = nn.Conv2d(F_int, F_ip, kernel_size=1,stride=1,padding=0,bias=True)
+   
 
     def forward(self,map_1_fm,map_2_fm):
         x1 = self.W_e1(map_1_fm)
@@ -511,7 +557,6 @@ class DualEncoding_U_Net(nn.Module):
         self.asm2=ASM(512,256)
         self.asm1=ASM(1024,512)
       
-        
 
         self.Up5 = up_conv(ch_in=1024,ch_out=512)
         self.Up_conv5 = nn.Sequential(nn.Conv2d(1024,512,kernel_size=1,stride=1,padding=0,bias=True),
@@ -643,10 +688,8 @@ class DualEncodingDecoding_U_Net(nn.Module):
         Arguments :
             img1_ch     : Number of channels in first image input
             img2_ch     : Number of channels in second image input
-            output_ch   : Number of channels in output input
             dropout     : dropout rate to be applied to the connections going to latent space
-            
- 
+           
     '''
 
     
@@ -675,168 +718,200 @@ class DualEncodingDecoding_U_Net(nn.Module):
         self.asm2=ASM(512,256)
         self.asm1=ASM(1024,512)
         
+        
+        self.bem4=BEM(128,64)
+        self.bem3=BEM(256,128)
+        self.bem2=BEM(512,256)
+        self.bem1=BEM(1024,512)
+        
+        
       
         self.dropout=nn.Dropout(dropout)
 
-        self.Up5 = up_conv(ch_in=1024,ch_out=512)
-        self.Up_conv5 = nn.Sequential(nn.Conv2d(1024,512,kernel_size=1,stride=1,padding=0,bias=True),
+        self.Up_sample5_decod_1 = up_conv(ch_in=1024,ch_out=512)
+        self.Up_conv5_decod_1 = nn.Sequential(nn.Conv2d(1024,512,kernel_size=1,stride=1,padding=0,bias=True),
                                       nn.BatchNorm2d(512),
                                       nn.ReLU(inplace=True))
 
-        self.Up4 = up_conv(ch_in=512,ch_out=256)
-        self.Up_conv4 = nn.Sequential(nn.Conv2d(512,256,kernel_size=1,stride=1,padding=0,bias=True),
+        self.Up_sample4_decod_1 = up_conv(ch_in=512,ch_out=256)
+        self.Up_conv4_decod_1 = nn.Sequential(nn.Conv2d(512,256,kernel_size=1,stride=1,padding=0,bias=True),
                                       nn.BatchNorm2d(256),
                                       nn.ReLU(inplace=True))
 
-        self.Up3 = up_conv(ch_in=256,ch_out=128)
-        self.Up_conv3 = nn.Sequential(nn.Conv2d(256,128,kernel_size=1,stride=1,padding=0,bias=True),
+        self.Up_sample3_decod_1 = up_conv(ch_in=256,ch_out=128)
+        self.Up_conv3_decod_1 = nn.Sequential(nn.Conv2d(256,128,kernel_size=1,stride=1,padding=0,bias=True),
                                       nn.BatchNorm2d(128),
                                       nn.ReLU(inplace=True))
 
-        self.Up2 = up_conv(ch_in=128,ch_out=64)
-        self.Up_conv2 = nn.Sequential(nn.Conv2d(128,64,kernel_size=1,stride=1,padding=0,bias=True),
+        self.Up_sample2_decod_1 = up_conv(ch_in=128,ch_out=64)
+        self.Up_conv2_decod_1 = nn.Sequential(nn.Conv2d(128,64,kernel_size=1,stride=1,padding=0,bias=True),
                                       nn.BatchNorm2d(64),
                                       nn.ReLU(inplace=True))
 
         
        
-        self.Up5_bound = up_conv(ch_in=1024,ch_out=512)
-        self.Up_conv5_bound = nn.Sequential(nn.Conv2d(512,512,kernel_size=1,stride=1,padding=0,bias=True),
+        self.Up_sample5_decod_2 = up_conv(ch_in=1024,ch_out=512)
+        self.Up_conv5_decod_2 = nn.Sequential(nn.Conv2d(1024,512,kernel_size=1,stride=1,padding=0,bias=True),
                                       nn.BatchNorm2d(512),
                                       nn.ReLU(inplace=True))
 
-        self.Up4_bound = up_conv(ch_in=512,ch_out=256)
-        self.Up_conv4_bound = nn.Sequential(nn.Conv2d(256,256,kernel_size=1,stride=1,padding=0,bias=True),
+        self.Up_sample4_decod_2 = up_conv(ch_in=512,ch_out=256)
+        self.Up_conv4_decod_2 = nn.Sequential(nn.Conv2d(512,256,kernel_size=1,stride=1,padding=0,bias=True),
                                       nn.BatchNorm2d(256),
                                       nn.ReLU(inplace=True))
 
-        self.Up3_bound = up_conv(ch_in=256,ch_out=128)
-        self.Up_conv3_bound = nn.Sequential(nn.Conv2d(128,128,kernel_size=1,stride=1,padding=0,bias=True),
+        self.Up_sample3_decod_2 = up_conv(ch_in=256,ch_out=128)
+        self.Up_conv3_decod_2 = nn.Sequential(nn.Conv2d(256,128,kernel_size=1,stride=1,padding=0,bias=True),
                                       nn.BatchNorm2d(128),
                                       nn.ReLU(inplace=True))
 
-        self.Up2_bound = up_conv(ch_in=128,ch_out=64)
-        self.Up_conv2_bound = nn.Sequential(nn.Conv2d(64,64,kernel_size=1,stride=1,padding=0,bias=True),
+        self.Up_sample2_decod_2 = up_conv(ch_in=128,ch_out=64)
+        self.Up_conv2_decod_2 = nn.Sequential(nn.Conv2d(128,64,kernel_size=1,stride=1,padding=0,bias=True),
                                       nn.BatchNorm2d(64),
                                       nn.ReLU(inplace=True))
         
-        self.Conv_1x1_bound = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
-        self.Conv_1x1 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
+        self.Conv_1x1_decod_1 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
+        self.Conv_1x1_decod_2 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
 
         
 
 
-    def forward(self,x_h,x_e):
-        # encoding path
-        x_h1 = self.Conv1_encoding_1(x_h)
+    def forward(self,x_1,x_2):
+    # encoding path
+        x1_encode_1 = self.Conv1_encoding_1(x_1)
         # N*64*512*512
 
-        x_h2 = self.Maxpool(x_h1)
-        x_h2 = self.Conv2_encoding_1(x_h2)
+        x2_encode_1 = self.Maxpool(x1_encode_1)
+        x2_encode_1 = self.Conv2_encoding_1(x2_encode_1)
         # N*128*256*256
 
-        x_h3 = self.Maxpool(x_h2)
-        x_h3 = self.Conv3_encoding_1(x_h3)
+        x3_encode_1 = self.Maxpool(x2_encode_1)
+        x3_encode_1 = self.Conv3_encoding_1(x3_encode_1)
         # N*256*128*128
 
-        x_h4 = self.Maxpool(x_h3)
-        x_h4 = self.Conv4_encoding_1(x_h4)
+        x4_encode_1 = self.Maxpool(x3_encode_1)
+        x4_encode_1 = self.Conv4_encoding_1(x4_encode_1)
         # N*512*64*64
-        
-        x_e1 = self.Conv1_encoding_2(x_e)
+
+        x1_encode_2 = self.Conv1_encoding_2(x_2)
         # N*64*512*512
 
-        x_e2 = self.Maxpool(x_e1)
-        x_e2 = self.Conv2_encoding_2(x_e2)
+        x2_encode_2 = self.Maxpool(x1_encode_2)
+        x2_encode_2 = self.Conv2_encoding_2(x2_encode_2)
         # N*128*256*256
 
-        x_e3 = self.Maxpool(x_e2)
-        x_e3 = self.Conv3_encoding_2(x_e3)
-    
+        x3_encode_2 = self.Maxpool(x2_encode_2)
+        x3_encode_2 = self.Conv3_encoding_2(x3_encode_2)
+
         # N*256*128*128
 
-        x_e4 = self.Maxpool(x_e3)
-        x_e4 = self.Conv4_encoding_2(x_e4)
+        x4_encode_2 = self.Maxpool(x3_encode_2)
+        x4_encode_2 = self.Conv4_encoding_2(x4_encode_2)
         # N*512*64*64
-    
-        lat_spc=self.dropout(x_h4)
+
+        lat_spc=self.dropout(x4_encode_1)
         lat_spc=self.Conv5_encoding_1(lat_spc)
         lat_spc=self.Maxpool(lat_spc)
         # N*1024*32*32
-      
-        
+
+
         # decoding + concat path
-        
-        d5 = self.Up5(lat_spc)
+
+        d5_decod_1 = self.Up_sample5_decod_1(lat_spc)
         # N*512*64*64
-        
-        x4=self.asm1(x_h4,x_e4)
+
+        x4_decod_1=self.asm1(x4_encode_1,x4_encode_2)
         # N*512*64*64
-        
-        d5 = torch.cat((x4,d5),dim=1)
+
+        d5_decod_1 = torch.cat((x4_decod_1,d5_decod_1),dim=1)
         # N*1024*64*64
-        d5=self.Up_conv5(d5)
+        d5_decod_1=self.Up_conv5_decod_1(d5_decod_1)
         # N*512*64*64
-        
-        d4 = self.Up4(d5)
-        # N*256*128*128
-        x3=self.asm2(x_h3,x_e3)
-        # N*256*128*128
-        d4 = torch.cat((x3,d4),dim=1)
-        # N*512*128*128
-        d4 = self.Up_conv4(d4)
-        # N*256*128*128
 
-        d3 = self.Up3(d4)
-        # N*128*256*256
-        x2=self.asm3(x_h2,x_e2)
-        # N*128*256*256
+        d5_decod_2 = self.Up_sample5_decod_2(lat_spc)
         
-        d3 = torch.cat((x2,d3),dim=1)
-        # N*256*256*256
-        d3 = self.Up_conv3(d3)
-        # N*128*256*256
-
-        d2 = self.Up2(d3)
-        # N*64*512*512
-        x1=self.asm4(x_h1,x_e1)
-        # N*64*512*512
-        d2 = torch.cat((x1,d2),dim=1)
-        # N*128*512*512
-        d2 = self.Up_conv2(d2)
-        # N*64*512*512
-        
-        d5_bound = self.Up5_bound(lat_spc)
         # N*512*64*64
-        d5_bound = d5+d5_bound
-        # N*512*64*64
-        d5_bound=self.Up_conv5_bound(d5_bound)
-        # N*512*64*64
-        
-        d4_bound = self.Up4_bound(d5_bound)
-        # N*256*128*128
     
-        d4_bound = d4+d4_bound
-        # N*256*128*128
-        d4_bound = self.Up_conv4_bound(d4_bound)
-        # N*256*128*128
+        x4_decod_2=self.bem1(x4_decod_1,d5_decod_2)
+        # N*512*64*64
 
-        d3_bound = self.Up3_bound(d4_bound)
-        # N*128*256*256
-        d3_bound = d3+d3_bound
-        # N*128*256*256
-        d3_bound = self.Up_conv3_bound(d3_bound)
-        # N*128*256*256
+        d5_decod_2 = torch.cat((x4_decod_2,d5_decod_2),dim=1)
+        
+        # N*1024*64*64
+        d5_decod_2=self.Up_conv5_decod_2(d5_decod_2)
 
-        d2_bound = self.Up2_bound(d3_bound)
-        # N*64*512*512
-        d2_bound = d2+d2_bound
-        # N*128*512*512
-        d2_bound = self.Up_conv2_bound(d2_bound)
-        # N*64*512*512
 
-        d1 = self.Conv_1x1(d2)
-        d1__bound=self.Conv_1x1_bound(d2_bound)
-        # N*1*512*512
+        ###
+        d4_decod_1 = self.Up_sample4_decod_1(d5_decod_1)
+        # N*512*64*64
 
-        return torch.cat((d1,d1_bound),dim=1)
+        x3_decod_1=self.asm2(x3_encode_1,x3_encode_2)
+        # N*512*64*64
+
+        d4_decod_1 = torch.cat((x3_decod_1,d4_decod_1),dim=1)
+        # N*1024*64*64
+        d4_decod_1=self.Up_conv4_decod_1(d4_decod_1)
+        # N*512*64*64
+
+        d4_decod_2 = self.Up_sample4_decod_2(d5_decod_2)
+        # N*512*64*64
+
+        x3_decod_2=self.bem2(x3_decod_1,d4_decod_2)
+        # N*512*64*64
+
+        d4_decod_2 = torch.cat((x3_decod_2,d4_decod_2),dim=1)
+        # N*1024*64*64
+        d4_decod_2=self.Up_conv4_decod_2(d4_decod_2)
+        ###
+
+        d3_decod_1 = self.Up_sample3_decod_1(d4_decod_1)
+        # N*512*64*64
+
+        x2_decod_1=self.asm3(x2_encode_1,x2_encode_2)
+        # N*512*64*64
+
+        d3_decod_1 = torch.cat((x2_decod_1,d3_decod_1),dim=1)
+        # N*1024*64*64
+        d3_decod_1=self.Up_conv3_decod_1(d3_decod_1)
+        
+        # N*512*64*64
+
+        d3_decod_2 = self.Up_sample3_decod_2(d4_decod_2)
+        # N*512*64*64
+
+        x2_decod_2=self.bem3(x2_decod_1,d3_decod_2)
+        # N*512*64*64
+
+        d3_decod_2 = torch.cat((x2_decod_2,d3_decod_2),dim=1)
+        # N*1024*64*64
+        d3_decod_2=self.Up_conv3_decod_2(d3_decod_2)
+
+        ###
+
+        d2_decod_1 = self.Up_sample2_decod_1(d3_decod_1)
+        # N*512*64*64
+
+        x1_decod_1=self.asm4(x1_encode_1,x1_encode_2)
+        # N*512*64*64
+
+        d2_decod_1 = torch.cat((x1_decod_1,d2_decod_1),dim=1)
+        # N*1024*64*64
+        d2_decod_1=self.Up_conv2_decod_1(d2_decod_1)
+        # N*512*64*64
+
+        d2_decod_2 = self.Up_sample2_decod_2(d3_decod_2)
+        # N*512*64*64
+
+        x1_decod_2=self.bem4(x1_decod_1,d2_decod_2)
+        # N*512*64*64
+
+        d2_decod_2 = torch.cat((x1_decod_2,d2_decod_2),dim=1)
+        # N*1024*64*64
+        d2_decod_2=self.Up_conv2_decod_2(d2_decod_2)
+
+        d1_encod_1=self.Conv_1x1_decod_1(d2_decod_1)
+        d1_encod_2=self.Conv_1x1_decod_2(d2_decod_2)
+
+
+        return torch.cat((d1_encod_1,d1_encod_2),dim=1)
+

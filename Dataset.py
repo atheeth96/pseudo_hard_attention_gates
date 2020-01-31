@@ -60,6 +60,8 @@ class DataSet(Dataset):
             
         else:
             h_img =imread(h_img_path)
+            
+        h_img=np.amax(h_img)-h_img
          
         
         
@@ -86,12 +88,16 @@ class Scale(object):
         
  
         scale=255
-        h=1-h/scale
+        h=h/scale
+        h_e=h_e/scale
+        nuclei_mask=nuclei_mask/scale
+        boundary_mask=boundary_mask/scale
+#         print("Scale : ",np.amax(h_e),np.amax(h),np.amax(nuclei_mask),np.amax(boundary_mask))
 
-        return {'h_e': h_e/scale,\
+        return {'h_e': h_e,\
                 'h':h,\
-                'nuclei_mask':nuclei_mask/scale,\
-                'boundary_mask':boundary_mask/scale}
+                'nuclei_mask':nuclei_mask,\
+                'boundary_mask':boundary_mask}
 
 class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
@@ -109,6 +115,9 @@ class ToTensor(object):
         nuclei_mask = nuclei_mask.transpose((2, 0, 1))
         boundary_mask = boundary_mask.transpose((2, 0, 1))
         
+        
+#         print("ToTensor : ",np.amax(h_e),np.amax(h),np.amax(nuclei_mask),np.amax(boundary_mask))
+        
         return {'h_e': torch.from_numpy(h_e).type(torch.FloatTensor),\
                 'h':torch.from_numpy(h).type(torch.FloatTensor),\
                 'nuclei_mask':torch.from_numpy(nuclei_mask).type(torch.FloatTensor),\
@@ -117,7 +126,7 @@ class ToTensor(object):
     
 class RandomGaussionBlur(object):
     """Apply gaussian blur to ndarrays in sample."""
-    def __init__(self,p,sigma=1,truncate=3,apply_dual=False):
+    def __init__(self,p,sigma=1,truncate=3,apply_dual=True):
         self.p=p
         self.sigma=sigma
         self.truncate=truncate
@@ -134,18 +143,23 @@ class RandomGaussionBlur(object):
             if self.apply_dual:
                 h_e= skimage.filters.gaussian(h_e, sigma=self.sigma, output=None, \
                            mode='nearest', cval=0, multichannel=None, \
-                           preserve_range=False, truncate=self.truncate)*255
+                           preserve_range=False, truncate=self.truncate)
                 h= skimage.filters.gaussian(h, sigma=self.sigma, output=None, \
                            mode='nearest', cval=0, multichannel=None, \
                            preserve_range=False, truncate=3)
             else:
                 h_e= skimage.filters.gaussian(h_e, sigma=self.sigma, output=None, \
                            mode='nearest', cval=0, multichannel=None, \
-                           preserve_range=False, truncate=self.truncate)*255
+                           preserve_range=False, truncate=self.truncate)
                 
+        if np.amax(h_e)<=1:
+            h_e=(h_e*255).astype(np.uint8)
+        if np.amax(h)<=1:
+            h=(h*255).astype(np.uint8)
         
             
-               
+#         print("RandomGaussionBlur : ",np.amax(h_e),np.amax(h),np.amax(nuclei_mask),np.amax(boundary_mask))
+
         return {'h_e': h_e,\
                 'h':h,\
                 'nuclei_mask':nuclei_mask,\
@@ -173,7 +187,16 @@ class RandomMedianBlur(object):
             else:
                 h_e= median(h_e, selem=np.stack((disk(self.disk_rad),disk(self.disk_rad),disk(self.disk_rad)),axis=2))
             
-               
+        if np.amax(h_e)<=1:
+            h_e=(h_e*255).astype(np.uint8)
+        if np.amax(h)<=1:
+            h=(h*255).astype(np.uint8)
+        if np.amax(nuclei_mask)<=1:
+            nuclei_mask=(nuclei_mask*255).astype(np.uint8)
+        if np.amax(boundary_mask)<=1:
+            boundary_mask=(boundary_mask*255).astype(np.uint8)
+            
+#         print("RandomMedianBlur : ",np.amax(h_e),np.amax(h),np.amax(nuclei_mask),np.amax(boundary_mask))
         return {'h_e': h_e,\
                 'h':h,\
                 'nuclei_mask':nuclei_mask,\
@@ -205,6 +228,17 @@ class RandomHorizontalFlip(object):
             h= h[ ::-1,:]
             nuclei_mask= nuclei_mask[ ::-1,:]
             boundary_mask= boundary_mask[ ::-1,:]
+            
+        if np.amax(h_e)<=1:
+            h_e=(h_e*255).astype(np.uint8)
+        if np.amax(h)<=1:
+            h=(h*255).astype(np.uint8)
+        if np.amax(nuclei_mask)<=1:
+            nuclei_mask=(nuclei_mask*255).astype(np.uint8)
+        if np.amax(boundary_mask)<=1:
+            boundary_mask=(boundary_mask*255).astype(np.uint8)
+        
+#         print("RandomHorizontalFlip : ",np.amax(h_e),np.amax(h),np.amax(nuclei_mask),np.amax(boundary_mask))
         return {'h_e': h_e,\
                 'h':h,\
                 'nuclei_mask':nuclei_mask,\
@@ -247,10 +281,23 @@ class RandomRotation(object):
         
             angle = self.get_params(self.degrees)
             
-            h_e= rotate(h_e, angle)
-            h= rotate(h, angle)
+            h_e= rotate(h_e, angle)*255
+            
+            h= rotate(h, angle)*255
+            
             nuclei_mask= rotate(nuclei_mask, angle)
             boundary_mask= rotate(boundary_mask, angle)
+        
+        if np.amax(h_e)<=1:
+            h_e=(h_e*255).astype(np.uint8)
+        if np.amax(h)<=1:
+            h=(h*255).astype(np.uint8)
+        if np.amax(nuclei_mask)<=1:
+            nuclei_mask=(nuclei_mask*255).astype(np.uint8)
+        if np.amax(boundary_mask)<=1:
+            boundary_mask=(boundary_mask*255).astype(np.uint8)
+            
+#         print("RandomRotation : ",np.amax(h_e),np.amax(h),np.amax(nuclei_mask),np.amax(boundary_mask))
         return {'h_e': h_e,\
                 'h':h,\
                 'nuclei_mask':nuclei_mask,\
@@ -286,8 +333,12 @@ def visualize_loader(loader,index=0):
             h_e=(sample['h_e'][index]).numpy()
             h=(sample['h'][index]).numpy()
             
+            
             nuclei_mask=(sample['nuclei_mask'][index]).numpy()
             boundary_mask=(sample['boundary_mask'][index]).numpy()
+            print("MAX VALUE : ","\nH&E",np.amax(h_e),"\nH",np.amax(h),"\nnuclei_mask",\
+                  np.amax(nuclei_mask),"\nboundary_mask",np.amax(boundary_mask))
+            
             
             h_e=h_e.transpose(1,2,0)
             
