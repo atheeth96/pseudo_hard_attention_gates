@@ -79,7 +79,7 @@ if not os.path.exists(boundary_mask_train_dir):
 for img in tqdm(train_list):
     nuclei=img.split('.')[0]+'_nucleus_mask.png'
     boundary=img.split('.')[0]+'_boundary_mask.png'
-    os.system("cp {} {}".format(os.path.join('norm_ideal',img),os.path.join(h_e_train_dir,img)))
+    os.system("cp {} {}".format(os.path.join(png_dir,img),os.path.join(h_e_train_dir,img)))
     os.system("cp {} {}".format(os.path.join('H_gray',img),os.path.join(h_train_dir,img)))
     os.system("cp {} {}".format(os.path.join('processed_data/nucleus_maps',nuclei),os.path.join(nuclei_mask_train_dir,nuclei)))
     os.system("cp {} {}".format(os.path.join('processed_data/boundary_maps',boundary)\
@@ -105,7 +105,7 @@ if not os.path.exists(boundary_mask_test_dir):
 for img in tqdm(test_list):
     nuclei=img.split('.')[0]+'_nucleus_mask.png'
     boundary=img.split('.')[0]+'_boundary_mask.png'
-    os.system("cp {} {}".format(os.path.join('norm_ideal',img),os.path.join(h_e_test_dir,img)))
+    os.system("cp {} {}".format(os.path.join(png_dir,img),os.path.join(h_e_test_dir,img)))
     os.system("cp {} {}".format(os.path.join('H_gray',img),os.path.join(h_test_dir,img)))
     os.system("cp {} {}".format(os.path.join('processed_data/nucleus_maps',nuclei),os.path.join(nuclei_mask_test_dir,nuclei)))
     os.system("cp {} {}".format(os.path.join('processed_data/boundary_maps',boundary)\
