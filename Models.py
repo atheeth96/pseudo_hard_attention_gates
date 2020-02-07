@@ -382,6 +382,52 @@ class ChannelPool(nn.Module):
 
 #         return psi*x1
     
+# class ASM(nn.Module):
+    
+#     '''
+#     Implementation of Attention Skip Module
+    
+#         Arguments :
+#             F_int : Number of channels in output feature map 
+#             F_ip  : Number of channels in input feature map 
+#     '''
+    
+    
+#     def __init__(self,F_int,F_ip):
+#         super().__init__()
+        
+#         self.W_e1 = nn.Sequential(
+#         nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
+#         nn.BatchNorm2d(F_int)
+#         )
+
+#         self.W_e2 = nn.Sequential(
+#         nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
+#         nn.BatchNorm2d(F_int)
+#         )
+
+#         self.psi = nn.Sequential(
+#         nn.Conv2d(F_int, 1, kernel_size=1,stride=1,padding=0,bias=True),
+#         nn.BatchNorm2d(1),
+#         nn.Sigmoid()
+#         )
+
+#         self.relu = nn.ReLU(inplace=True)
+        
+# #         self.ChannelPool = ChannelPool(F_int)
+#         self.W_1x1 = nn.Conv2d(F_int, F_ip, kernel_size=1,stride=1,padding=0,bias=True)
+       
+
+#     def forward(self,map_1_fm,map_2_fm):
+#         x1 = self.W_e1(map_1_fm)
+#         x2 = self.W_e2(map_2_fm)
+#         x3 = self.W_1x1(x1)
+#         psi = self.relu(x2+x1)
+#         psi = self.psi(psi)
+       
+#         return psi*x3,psi
+    
+
 class ASM(nn.Module):
     
     '''
@@ -396,37 +442,33 @@ class ASM(nn.Module):
     def __init__(self,F_int,F_ip):
         super().__init__()
         
-        self.W_e1 = nn.Sequential(
-        nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
-        nn.BatchNorm2d(F_int)
-        )
+        self.W_e1 = nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True)
 
-        self.W_e2 = nn.Sequential(
-        nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
-        nn.BatchNorm2d(F_int)
-        )
+
+        self.W_e2 =nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True)
+
 
         self.psi = nn.Sequential(
         nn.Conv2d(F_int, 1, kernel_size=1,stride=1,padding=0,bias=True),
-        nn.BatchNorm2d(1),
         nn.Sigmoid()
         )
 
         self.relu = nn.ReLU(inplace=True)
         
-#         self.ChannelPool = ChannelPool(F_int)
-        self.W_1x1 = nn.Conv2d(F_int, F_ip, kernel_size=1,stride=1,padding=0,bias=True)
-       
 
+        self.W_1x1 = nn.Sequential(
+            nn.Conv2d(F_ip, F_ip, kernel_size=1,stride=1,padding=0,bias=True),
+            nn.BatchNorm2d(F_ip))
+       
     def forward(self,map_1_fm,map_2_fm):
         x1 = self.W_e1(map_1_fm)
         x2 = self.W_e2(map_2_fm)
-        x3 = self.W_1x1(x1)
+        
         psi = self.relu(x2+x1)
         psi = self.psi(psi)
+        result=self.W_1x1(psi*map_1_fm)
        
-        return psi*x3
-    
+        return result,psi
     
 class BEM(nn.Module):
     
@@ -638,7 +680,7 @@ class DualEncoding_U_Net(nn.Module):
         d5 = self.Up5(lat_spc)
         # N*512*16*16
         
-        x4=self.asm1(x_h4,x_e4)
+        x4,psi1=self.asm1(x_h4,x_e4)
         # N*512*16*16
         
         d5 = torch.cat((x4,d5),dim=1)
@@ -648,7 +690,7 @@ class DualEncoding_U_Net(nn.Module):
         
         d4 = self.Up4(d5)
         # N*256*32*32
-        x3=self.asm2(x_h3,x_e3)
+        x3,psi2=self.asm2(x_h3,x_e3)
         # N*256*32*32
         d4 = torch.cat((x3,d4),dim=1)
         # N*512*32*32
@@ -657,7 +699,7 @@ class DualEncoding_U_Net(nn.Module):
 
         d3 = self.Up3(d4)
         # N*128*64*64
-        x2=self.asm3(x_h2,x_e2)
+        x2,psi3=self.asm3(x_h2,x_e2)
         # N*128*64*64
         
         d3 = torch.cat((x2,d3),dim=1)
@@ -667,7 +709,7 @@ class DualEncoding_U_Net(nn.Module):
 
         d2 = self.Up2(d3)
         # N*64*128*128
-        x1=self.asm4(x_h1,x_e1)
+        x1,psi4=self.asm4(x_h1,x_e1)
         # N*64*128*128
         d2 = torch.cat((x1,d2),dim=1)
         # N*128*128*128
@@ -675,9 +717,10 @@ class DualEncoding_U_Net(nn.Module):
         # N*64*128*128
 
         d1 = self.Conv_1x1(d2)
+        attention_maps=[psi1,psi2,psi3,psi4]
         # N*2*128*128
 
-        return d1
+        return d1,attention_maps
     
     
 class DualEncodingDecoding_U_Net(nn.Module):

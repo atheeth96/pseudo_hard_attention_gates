@@ -109,7 +109,8 @@ def whole_img_pred(h_e_path,h_path,pred_dir_name,model,predict_boundary=False,pa
 
         temp_h_e_img_patches=torch.from_numpy(h_e_img_patches[i*new_r_count:(i+1)*new_r_count]).type(torch.FloatTensor).to(device)
         temp_h_img_patches=torch.from_numpy(h_img_patches[i*new_r_count:(i+1)*new_r_count]).type(torch.FloatTensor).to(device)
-        pred=torch.sigmoid(model(temp_h_e_img_patches,temp_h_img_patches))
+        pred,_=model(temp_h_e_img_patches,temp_h_img_patches)
+        pred=torch.sigmoid(pred)
         
         del temp_h_e_img_patches,temp_h_img_patches
         if predict_boundary:

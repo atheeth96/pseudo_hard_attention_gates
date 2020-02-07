@@ -141,15 +141,16 @@ for tag in ['Train','Test']:
 
 
             for i,h_e_patch in enumerate(h_e_patches):
-                NO_PATCHES+=1
+                if len(np.where(nuclei_patches[i])[0])>0.1*patch_size*patch_size:
+                    NO_PATCHES+=1
 
-                imsave(os.path.join(input1_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1)),h_e_patch)
-                imsave(os.path.join(input2_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1)),h_patches[i])
+                    imsave(os.path.join(input1_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1)),h_e_patch)
+                    imsave(os.path.join(input2_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1)),h_patches[i])
 
-                imsave(os.path.join(nuclei_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
-                       ,nuclei_patches[i])
-                imsave(os.path.join(boundary_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
-                       ,boundary_patches[i])
+                    imsave(os.path.join(nuclei_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
+                           ,nuclei_patches[i])
+                    imsave(os.path.join(boundary_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
+                           ,boundary_patches[i])
 
 
         except:
