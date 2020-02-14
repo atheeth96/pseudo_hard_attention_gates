@@ -13,9 +13,11 @@ app/__pycache__/
 *.tiff
 *.npy
 #files
+*post_proc*
 *.sql
 *.sqlite
 *.xml
+*.zip
 unet_nuclear_seg.ipynb
 nuclei_seg_v1.ipynb
 #folders

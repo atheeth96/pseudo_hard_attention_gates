@@ -484,36 +484,33 @@ class BEM(nn.Module):
     def __init__(self,F_int,F_ip):
         super().__init__()
         
-        self.W_e1 = nn.Sequential(
-        nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
-        nn.BatchNorm2d(F_int)
-        )
+        self.W_e1 = nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True)
 
-        self.W_e2 = nn.Sequential(
-        nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True),
-        nn.BatchNorm2d(F_int)
-        )
+
+        self.W_e2 =nn.Conv2d(F_ip, F_int, kernel_size=1,stride=1,padding=0,bias=True)
+
 
         self.psi = nn.Sequential(
         nn.Conv2d(F_int, 1, kernel_size=1,stride=1,padding=0,bias=True),
-        nn.BatchNorm2d(1),
         nn.Sigmoid()
         )
 
         self.relu = nn.ReLU(inplace=True)
         
-#         self.ChannelPool = ChannelPool(F_int)
-        self.W_1x1 = nn.Conv2d(F_int, F_ip, kernel_size=1,stride=1,padding=0,bias=True)
-   
 
+        self.W_1x1 = nn.Sequential(
+            nn.Conv2d(F_ip, F_ip, kernel_size=1,stride=1,padding=0,bias=True),
+            nn.BatchNorm2d(F_ip))
+       
     def forward(self,map_1_fm,map_2_fm):
         x1 = self.W_e1(map_1_fm)
         x2 = self.W_e2(map_2_fm)
-        x3 = self.W_1x1(x1)
+        
         psi = self.relu(x2+x1)
         psi = self.psi(psi)
+        result=self.W_1x1(psi*map_1_fm)
        
-        return psi*x3
+        return result
     
 class FFM(nn.Module):
     
@@ -863,7 +860,7 @@ class DualEncodingDecoding_U_Net(nn.Module):
         d5_decod_1 = self.Up_sample5_decod_1(lat_spc)
         # N*512*64*64
 
-        x4_decod_1=self.asm1(x4_encode_1,x4_encode_2)
+        x4_decod_1,psi1=self.asm1(x4_encode_1,x4_encode_2)
         # N*512*64*64
 
         d5_decod_1 = torch.cat((x4_decod_1,d5_decod_1),dim=1)
@@ -888,7 +885,7 @@ class DualEncodingDecoding_U_Net(nn.Module):
         d4_decod_1 = self.Up_sample4_decod_1(d5_decod_1)
         # N*512*64*64
 
-        x3_decod_1=self.asm2(x3_encode_1,x3_encode_2)
+        x3_decod_1,psi2=self.asm2(x3_encode_1,x3_encode_2)
         # N*512*64*64
 
         d4_decod_1 = torch.cat((x3_decod_1,d4_decod_1),dim=1)
@@ -910,7 +907,7 @@ class DualEncodingDecoding_U_Net(nn.Module):
         d3_decod_1 = self.Up_sample3_decod_1(d4_decod_1)
         # N*512*64*64
 
-        x2_decod_1=self.asm3(x2_encode_1,x2_encode_2)
+        x2_decod_1,psi3=self.asm3(x2_encode_1,x2_encode_2)
         # N*512*64*64
 
         d3_decod_1 = torch.cat((x2_decod_1,d3_decod_1),dim=1)
@@ -934,7 +931,7 @@ class DualEncodingDecoding_U_Net(nn.Module):
         d2_decod_1 = self.Up_sample2_decod_1(d3_decod_1)
         # N*512*64*64
 
-        x1_decod_1=self.asm4(x1_encode_1,x1_encode_2)
+        x1_decod_1,psi4=self.asm4(x1_encode_1,x1_encode_2)
         # N*512*64*64
 
         d2_decod_1 = torch.cat((x1_decod_1,d2_decod_1),dim=1)
@@ -954,7 +951,8 @@ class DualEncodingDecoding_U_Net(nn.Module):
 
         d1_encod_1=self.Conv_1x1_decod_1(d2_decod_1)
         d1_encod_2=self.Conv_1x1_decod_2(d2_decod_2)
+        attention_maps=[psi1,psi2,psi3,psi4]
 
 
-        return torch.cat((d1_encod_1,d1_encod_2),dim=1)
+        return torch.cat((d1_encod_1,d1_encod_2),dim=1),attention_maps
 
