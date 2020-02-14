@@ -5,6 +5,8 @@ from skimage.io import imread,imsave
 import numpy as np
 from skimage import morphology
 
+from skimage.measure import label, regionprops
+
 import re
 import warnings
 warnings.filterwarnings('ignore')
@@ -14,6 +16,13 @@ import math
     Python script to prepare binary maps of nuclei and boundary from CPM_17 data's numpy arrays'
     
 '''
+def coord2array(coord):
+    x=[]
+    y=[]
+    for i in coord:
+        x.append(i[0])
+        y.append(i[1])
+    return (x,y)
 
 patch_size=256
 step=128
@@ -25,6 +34,9 @@ for tag in ['Train','Test']:
     
     path_gt='other_data/CPM_17/{}/GT_Mask'.format(tag)
     path_nuclei='other_data/CPM_17/{}/NucleiMaps'.format(tag)
+    path_verical='other_data/CPM_17/{}/vertical_maps'.format(tag)
+    path_horizontal='other_data/CPM_17/{}/horizontal_maps'.format(tag)
+    
     if not all([os.path.exists(path_bound),os.path.exists(path_nuclei)]):
         
         if not os.path.exists(path_bound):
@@ -32,6 +44,12 @@ for tag in ['Train','Test']:
 
         if not os.path.exists(path_nuclei):
             os.mkdir(path_nuclei)
+            
+        if not os.path.exists(path_verical):
+            os.mkdir(path_verical)
+        
+        if not os.path.exists(path_horizontal):
+            os.mkdir(path_horizontal)
             
 
         img_list=[x for x in os.listdir(path_gt) if x.split('.')[-1]=='txt']
@@ -44,28 +62,64 @@ for tag in ['Train','Test']:
             img=np.array([int(a) for a in x[1:]]).reshape(list(map(int, re.findall('\d+', x[0]))))
 
             boundary_map=np.zeros(img.shape[:2],dtype=np.uint8)
-
-            for i in range(1,int(np.amax(img))):
+            
+            label_img = label(img)
+            regions = regionprops(label_img)
+            
+            
+            ############
+            x_temp_img=np.zeros_like(img)
+            y_temp_img=np.zeros_like(img)
+            for i,region in enumerate(regions):
+                
+                coordinates=coord2array(list(region.coords))
+                
                 nuclei_map=np.zeros(img.shape,dtype=np.uint8)
-                nuclei_map[np.where(img==i)]=255
-
+                nuclei_map[coordinates]=255
+                
                 contours=skimage.measure.find_contours(nuclei_map,0)[0]
-
+                
                 img_temp=np.zeros(img.shape,dtype=np.uint8)
                 for countour in contours:
                     x,y=countour
 
                     img_temp[int(x),int(y)]=255
-
+                    
                 boundary_map+=img_temp
+                
+                distance_x=abs(coordinates[0]-np.ones(len(coordinates[0]))*round(region.centroid[0]))
+                distance_y=abs(coordinates[1]-np.ones(len(coordinates[1]))*round(region.centroid[1]))
+                distance_x=((distance_x-np.min(distance_x))/(np.max(distance_x)-np.min(distance_x)))*255.0
+                distance_y=((distance_y-np.min(distance_y))/(np.max(distance_y)-np.min(distance_y)))*255.0
+                x_temp_img[coordinates]=distance_x
+                y_temp_img[coordinates]=distance_y
+            ############
+
+#             for i in range(1,int(np.amax(img))):
+#                 nuclei_map=np.zeros(img.shape,dtype=np.uint8)
+#                 nuclei_map[np.where(img==i)]=255
+
+#                 contours=skimage.measure.find_contours(nuclei_map,0)[0]
+
+#                 img_temp=np.zeros(img.shape,dtype=np.uint8)
+#                 for countour in contours:
+#                     x,y=countour
+
+#                     img_temp[int(x),int(y)]=255
+
+#                 boundary_map+=img_temp
 
             boundary_map=morphology.dilation(boundary_map, selem=None)
             boundary_map=boundary_map.astype(np.uint8)
-            imsave(path_bound+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',boundary_map)
+            imsave(path_bound+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',boundary_map.astype(np.uint8))
 
             img[np.where(img!=0)]=255
             img=img.astype(np.uint8)
-            imsave(path_nuclei+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',img)
+            imsave(path_nuclei+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',img.astype(np.uint8))
+            
+            imsave(path_verical+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',x_temp_img.astype(np.uint8))
+            imsave(path_horizontal+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',y_temp_img.astype(np.uint8))
+            
             
     input1_train_patch_dir='other_data/CPM_17/{}/H_E_patches'.format(tag)
     input2_train_patch_dir='other_data/CPM_17/{}/H_patches'.format(tag)
@@ -73,11 +127,16 @@ for tag in ['Train','Test']:
     nuclei_train_patch_dir='other_data/CPM_17/{}/nuclei_patches'.format(tag)
     boundary_train_patch_dir='other_data/CPM_17/{}/boundary_patches'.format(tag)
     
-    for directory in [input1_train_patch_dir,input2_train_patch_dir,nuclei_train_patch_dir,boundary_train_patch_dir]:
+    vertical_patch_dir='other_data/CPM_17/{}/vertical_patches'.format(tag)
+    horizontal_patch_dir='other_data/CPM_17/{}/horizontal_patches'.format(tag)
+    
+    for directory in [input1_train_patch_dir,input2_train_patch_dir,nuclei_train_patch_dir\
+                      ,boundary_train_patch_dir,vertical_patch_dir,horizontal_patch_dir]:
         if os.path.exists(directory):
             os.system("rm -rf {}".format(directory))
     
-    for directory in [input1_train_patch_dir,input2_train_patch_dir,nuclei_train_patch_dir,boundary_train_patch_dir]:
+    for directory in [input1_train_patch_dir,input2_train_patch_dir,nuclei_train_patch_dir,\
+                      boundary_train_patch_dir,vertical_patch_dir,horizontal_patch_dir]:
         os.mkdir(directory)
 
     loop=tqdm([x for x in os.listdir(path_images) if x.split('.')[-1]=='png'])
@@ -92,6 +151,9 @@ for tag in ['Train','Test']:
 
             nuclei_mask=imread(os.path.join(path_nuclei,img_name))
             boundary_mask=imread(os.path.join(path_bound,img_name))
+
+            vertical_map=imread(os.path.join(path_verical,img_name))
+            horizontal_map=imread(os.path.join(path_horizontal,img_name))
 
 
             loop.set_postfix(Image=img_name)
@@ -117,6 +179,9 @@ for tag in ['Train','Test']:
             nuclei_mask_padded=np.pad(nuclei_mask, [(pad_r1,pad_r2),(pad_c1,pad_c2)], 'constant', constant_values=0)
             boundary_mask_padded=np.pad(boundary_mask, [(pad_r1,pad_r2),(pad_c1,pad_c2)], 'constant', constant_values=0)
 
+            vertical_map_padded=np.pad(vertical_map, [(pad_r1,pad_r2),(pad_c1,pad_c2)], 'constant', constant_values=0)
+            horizontal_map_padded=np.pad(horizontal_map, [(pad_r1,pad_r2),(pad_c1,pad_c2)], 'constant', constant_values=0)
+
             window_shape=(patch_size,patch_size,3) 
             window_shape_mask=(patch_size,patch_size) 
 
@@ -141,6 +206,13 @@ for tag in ['Train','Test']:
             boundary_patches=skimage.util.view_as_windows(boundary_mask_padded, window_shape_mask, step=step)
             boundary_patches=boundary_patches.reshape((-1,patch_size,patch_size))
 
+            vertical_map_patches=skimage.util.view_as_windows(vertical_map_padded, window_shape_mask, step=step)
+            vertical_map_patches=vertical_map_patches.reshape((-1,patch_size,patch_size))
+            horizontal_map_patches=skimage.util.view_as_windows(horizontal_map_padded, window_shape_mask, step=step)
+            horizontal_map_patches=horizontal_map_patches.reshape((-1,patch_size,patch_size))
+
+
+
 
 
 
@@ -154,6 +226,10 @@ for tag in ['Train','Test']:
                        ,nuclei_patches[i])
                 imsave(os.path.join(boundary_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
                        ,boundary_patches[i])
+                imsave(os.path.join(vertical_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
+                       ,vertical_map_patches[i])
+                imsave(os.path.join(horizontal_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
+                       ,horizontal_map_patches[i])
 
 
         except:

@@ -733,7 +733,7 @@ class DualEncodingDecoding_U_Net(nn.Module):
     '''
 
     
-    def __init__(self,img_ch1=3,img_ch2=1,output_ch=1,dropout=0.45):
+    def __init__(self,img_ch1=3,img_ch2=1,output_ch1=1,output_ch2=1,dropout=0.45):
         super().__init__()
 
         self.Maxpool = nn.MaxPool2d(kernel_size=2,stride=2)
@@ -810,8 +810,8 @@ class DualEncodingDecoding_U_Net(nn.Module):
                                       nn.BatchNorm2d(64),
                                       nn.ReLU(inplace=True))
         
-        self.Conv_1x1_decod_1 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
-        self.Conv_1x1_decod_2 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
+        self.Conv_1x1_decod_1 = nn.Conv2d(64,output_ch1,kernel_size=1,stride=1,padding=0)
+        self.Conv_1x1_decod_2 = nn.Conv2d(64,output_ch2,kernel_size=1,stride=1,padding=0)
 
         
 

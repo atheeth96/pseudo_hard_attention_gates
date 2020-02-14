@@ -527,4 +527,38 @@ class DE_loss(nn.Module):
         return dice_loss*self.dice_coeff + bce
     
     
+
+    
+class HV_Loss(nn.Module):
+    """
+        SoftDiceLoss
+        
+        Implementation of Novel loss
+        
+        Args:
+            dice_coeff :  weights to apply dice loss
+            
+    """
+    def __init__(self,coef=1):
+        self.coef=coef
+        super().__init__()
+
+    def forward(self, logits,targets):
+        """
+        Args:
+            logits : (tensor) Predictied probability map
+            targets : (tensor) GT probability map
+            
+        """
+        nuclei_mask,hor_map,ver_map=torch.chunk(logits,3,dim=1)
+        nuclei_gt,hor_gt,ver_gt=torch.chunk(targets,3,dim=1)
+        
+        hover_map=torch.cat((hor_map,ver_map),dim=1)
+        hover_gt=torch.cat((hor_gt,ver_gt),dim=1)
+        
+        bce=nn.BCELoss()(nuclei_mask,nuclei_gt)
+        mse=nn.MSELoss()(hover_map,hover_gt)
+        return self.coef*mse + bce
+    
+    
     
