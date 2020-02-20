@@ -11,6 +11,7 @@ app/__pycache__/
 *.jpeg
 *.tif
 *.tiff
+*.mat
 *.npy
 #files
 *post_proc*
