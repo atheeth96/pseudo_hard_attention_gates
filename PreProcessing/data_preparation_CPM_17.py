@@ -4,6 +4,8 @@ import skimage
 from skimage.io import imread,imsave
 import numpy as np
 from skimage import morphology
+import numpy
+
 
 from skimage.measure import label, regionprops
 
@@ -28,14 +30,14 @@ patch_size=256
 step=128
 gray=True
 for tag in ['Train','Test']:
-    path_images='other_data/CPM_17/{}/Images'.format(tag)
-    path_h_gray='other_data/CPM_17/{}/H_gray'.format(tag)
-    path_bound='other_data/CPM_17/{}/BoundaryMaps'.format(tag)
+    path_images='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/Images'.format(tag)
+    path_h_gray='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/H_gray'.format(tag)
+    path_bound='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/BoundaryMaps'.format(tag)
     
-    path_gt='other_data/CPM_17/{}/GT_Mask'.format(tag)
-    path_nuclei='other_data/CPM_17/{}/NucleiMaps'.format(tag)
-    path_verical='other_data/CPM_17/{}/vertical_maps'.format(tag)
-    path_horizontal='other_data/CPM_17/{}/horizontal_maps'.format(tag)
+    path_gt='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/GT_Mask'.format(tag)
+    path_nuclei='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/NucleiMaps'.format(tag)
+    path_verical='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/vertical_maps'.format(tag)
+    path_horizontal='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/horizontal_maps'.format(tag)
     
     if not all([os.path.exists(path_bound),os.path.exists(path_nuclei)]):
         
@@ -68,8 +70,8 @@ for tag in ['Train','Test']:
             
             
             ############
-            x_temp_img=np.zeros_like(img)
-            y_temp_img=np.zeros_like(img)
+            x_temp_img=np.zeros_like(img,dtype=np.float32)
+            y_temp_img=np.zeros_like(img,dtype=np.float32)
             for i,region in enumerate(regions):
                 
                 coordinates=coord2array(list(region.coords))
@@ -87,10 +89,10 @@ for tag in ['Train','Test']:
                     
                 boundary_map+=img_temp
                 
-                distance_x=abs(coordinates[0]-np.ones(len(coordinates[0]))*round(region.centroid[0]))
-                distance_y=abs(coordinates[1]-np.ones(len(coordinates[1]))*round(region.centroid[1]))
-                distance_x=((distance_x-np.min(distance_x))/(np.max(distance_x)-np.min(distance_x)))*255.0
-                distance_y=((distance_y-np.min(distance_y))/(np.max(distance_y)-np.min(distance_y)))*255.0
+                distance_x=(coordinates[0]-np.ones(len(coordinates[0]))*round(region.centroid[0]))
+                distance_y=(coordinates[1]-np.ones(len(coordinates[1]))*round(region.centroid[1]))
+                distance_x=((distance_x-np.min(distance_x))/(np.max(distance_x)-np.min(distance_x)))*(2) -1
+                distance_y=((distance_y-np.min(distance_y))/(np.max(distance_y)-np.min(distance_y)))*(2) -1
                 x_temp_img[coordinates]=distance_x
                 y_temp_img[coordinates]=distance_y
             ############
@@ -117,18 +119,20 @@ for tag in ['Train','Test']:
             img=img.astype(np.uint8)
             imsave(path_nuclei+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',img.astype(np.uint8))
             
-            imsave(path_verical+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',x_temp_img.astype(np.uint8))
-            imsave(path_horizontal+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',y_temp_img.astype(np.uint8))
+#             imsave(path_verical+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',x_temp_img.astype(np.uint8))
+#             imsave(path_horizontal+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1])+'.png',y_temp_img.astype(np.uint8))
+            np.save(path_horizontal+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1]),y_temp_img)
+            np.save(path_verical+'/'+'_'.join(img_name.split('.')[0].split('_')[:-1]),x_temp_img)
             
             
-    input1_train_patch_dir='other_data/CPM_17/{}/H_E_patches'.format(tag)
-    input2_train_patch_dir='other_data/CPM_17/{}/H_patches'.format(tag)
+    input1_train_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/H_E_patches'.format(tag)
+    input2_train_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/H_patches'.format(tag)
  
-    nuclei_train_patch_dir='other_data/CPM_17/{}/nuclei_patches'.format(tag)
-    boundary_train_patch_dir='other_data/CPM_17/{}/boundary_patches'.format(tag)
+    nuclei_train_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/nuclei_patches'.format(tag)
+    boundary_train_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/boundary_patches'.format(tag)
     
-    vertical_patch_dir='other_data/CPM_17/{}/vertical_patches'.format(tag)
-    horizontal_patch_dir='other_data/CPM_17/{}/horizontal_patches'.format(tag)
+    vertical_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/vertical_patches'.format(tag)
+    horizontal_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CPM_17/{}/horizontal_patches'.format(tag)
     
     for directory in [input1_train_patch_dir,input2_train_patch_dir,nuclei_train_patch_dir\
                       ,boundary_train_patch_dir,vertical_patch_dir,horizontal_patch_dir]:
@@ -152,8 +156,8 @@ for tag in ['Train','Test']:
             nuclei_mask=imread(os.path.join(path_nuclei,img_name))
             boundary_mask=imread(os.path.join(path_bound,img_name))
 
-            vertical_map=imread(os.path.join(path_verical,img_name))
-            horizontal_map=imread(os.path.join(path_horizontal,img_name))
+            vertical_map=np.load(os.path.join(path_verical,img_name.split('.')[0]+'.npy'))
+            horizontal_map=np.load(os.path.join(path_horizontal,img_name.split('.')[0]+'.npy'))
 
 
             loop.set_postfix(Image=img_name)
@@ -219,17 +223,20 @@ for tag in ['Train','Test']:
             for i,h_e_patch in enumerate(h_e_patches):
                 NO_PATCHES+=1
 
-                imsave(os.path.join(input1_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1)),h_e_patch)
-                imsave(os.path.join(input2_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1)),h_patches[i])
+                imsave(os.path.join(input1_train_patch_dir,img_name.split('.')[0]+'_{}.png'.format(i+1)),h_e_patch)
+                imsave(os.path.join(input2_train_patch_dir,img_name.split('.')[0]+'_{}.png'.format(i+1)),h_patches[i])
 
-                imsave(os.path.join(nuclei_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
+                imsave(os.path.join(nuclei_train_patch_dir,img_name.split('.')[0]+'_{}.png'.format(i+1))\
                        ,nuclei_patches[i])
-                imsave(os.path.join(boundary_train_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
+                imsave(os.path.join(boundary_train_patch_dir,img_name.split('.')[0]+'_{}.png'.format(i+1))\
                        ,boundary_patches[i])
-                imsave(os.path.join(vertical_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
-                       ,vertical_map_patches[i])
-                imsave(os.path.join(horizontal_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
-                       ,horizontal_map_patches[i])
+#                 imsave(os.path.join(vertical_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
+#                        ,vertical_map_patches[i])
+#                 imsave(os.path.join(horizontal_patch_dir,img_name.split('.')[0]+'_{}_.png'.format(i+1))\
+#                        ,horizontal_map_patches[i])
+                np.save(os.path.join(vertical_patch_dir,img_name.split('.')[0]+'_{}'.format(i+1)),vertical_map_patches[i])
+                np.save(os.path.join(horizontal_patch_dir,img_name.split('.')[0]+'_{}'.format(i+1)),horizontal_map_patches[i])
+                
 
 
         except:

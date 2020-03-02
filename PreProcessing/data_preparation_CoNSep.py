@@ -18,11 +18,11 @@ patch_size=256
 step=128
 gray=True
 for tag in ['Train','Test']:
-    path_images='other_data/CoNSeP/{}/Images'.format(tag)
-    path_h_gray='other_data/CoNSeP/{}/H_gray'.format(tag)
-    path_bound='other_data/CoNSeP/{}/BoundaryMaps'.format(tag)
-    path_gt='other_data/CoNSeP/{}/Labels'.format(tag)
-    path_nuclei='other_data/CoNSeP/{}/NucleiMaps'.format(tag)
+    path_images='/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/Images'.format(tag)
+    path_h_gray='/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/H_gray'.format(tag)
+    path_bound='/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/BoundaryMaps'.format(tag)
+    path_gt='/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/Labels'.format(tag)
+    path_nuclei='/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/NucleiMaps'.format(tag)
     if not all([len(os.listdir(path_bound))==len(os.listdir(path_nuclei)),\
                 len(os.listdir(path_nuclei))==len(os.listdir(path_gt))]):
         
@@ -37,7 +37,7 @@ for tag in ['Train','Test']:
 
         for img_name in tqdm(img_list):
 
-            img=np.load('other_data/CoNSeP/{}/Labels/{}'.format(tag,img_name))[:,:,0]
+            img=np.load('/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/Labels/{}'.format(tag,img_name))[:,:,0]
 
             boundary_map=np.zeros(img.shape[:2],dtype=np.uint8)
 
@@ -63,11 +63,11 @@ for tag in ['Train','Test']:
             img=img.astype(np.uint8)
             imsave(path_nuclei+'/'+img_name.split('.')[0]+'.png',img)
             
-    input1_train_patch_dir='other_data/CoNSeP/{}/H_E_patches'.format(tag)
-    input2_train_patch_dir='other_data/CoNSeP/{}/H_patches'.format(tag)
+    input1_train_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/H_E_patches'.format(tag)
+    input2_train_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/H_patches'.format(tag)
  
-    nuclei_train_patch_dir='other_data/CoNSeP/{}/nuclei_patches'.format(tag)
-    boundary_train_patch_dir='other_data/CoNSeP/{}/boundary_patches'.format(tag)
+    nuclei_train_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/nuclei_patches'.format(tag)
+    boundary_train_patch_dir='/'.join(os.getcwd().split('/')[:-1])+'/Data/CoNSeP/{}/boundary_patches'.format(tag)
     
     for directory in [input1_train_patch_dir,input2_train_patch_dir,nuclei_train_patch_dir,boundary_train_patch_dir]:
         if os.path.exists(directory):
