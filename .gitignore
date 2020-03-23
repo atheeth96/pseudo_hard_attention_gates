@@ -22,10 +22,10 @@ app/__pycache__/
 unet_nuclear_seg.ipynb
 nuclei_seg_v1.ipynb
 #folders
-*model*
+Trained_model*
 *map*
 /4_class
-other_data/
+Data/
 # OS generated files #
 ######################
 .DS_Store
