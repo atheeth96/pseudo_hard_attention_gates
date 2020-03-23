@@ -174,7 +174,7 @@ class Attention_block(nn.Module):
         psi = self.relu(g1+x1)
         psi = self.psi(psi)
 
-        return x*psi
+        return x*psi,psi
 
 class U_Net(nn.Module):
     
@@ -250,7 +250,7 @@ class U_Net(nn.Module):
 
         d1 = self.Conv_1x1(d2)
 
-        return d1
+        return d1,None
 
 class AttnUNet(nn.Module):
     
@@ -312,34 +312,35 @@ class AttnUNet(nn.Module):
         x4 = self.Conv4(x4)
 
         x5 = self.Maxpool(x4)
-        x5 = self.Conv5(x5)
         if self.dropout is not None:
             x5=self.dropout(x5)
+        x5 = self.Conv5(x5)
+        
 
         # decoding + concat path
         d5 = self.Up5(x5)
-        x4 = self.Att5(g=d5,x=x4)
+        x4,psi4 = self.Att5(g=d5,x=x4)
         d5 = torch.cat((x4,d5),dim=1)        
         d5 = self.Up_conv5(d5)
 
         d4 = self.Up4(d5)
-        x3 = self.Att4(g=d4,x=x3)
+        x3,psi3 = self.Att4(g=d4,x=x3)
         d4 = torch.cat((x3,d4),dim=1)
         d4 = self.Up_conv4(d4)
 
         d3 = self.Up3(d4)
-        x2 = self.Att3(g=d3,x=x2)
+        x2,psi2 = self.Att3(g=d3,x=x2)
         d3 = torch.cat((x2,d3),dim=1)
         d3 = self.Up_conv3(d3)
 
         d2 = self.Up2(d3)
-        x1 = self.Att2(g=d2,x=x1)
+        x1,psi1 = self.Att2(g=d2,x=x1)
         d2 = torch.cat((x1,d2),dim=1)
         d2 = self.Up_conv2(d2)
 
         d1 = self.Conv_1x1(d2)
 
-        return d1
+        return d1,[psi1,psi2,psi3,psi4]
     
     
 class ChannelPool(nn.Module):
@@ -714,10 +715,138 @@ class DualEncoding_U_Net(nn.Module):
         # N*64*128*128
 
         d1 = self.Conv_1x1(d2)
-        attention_maps=[psi1,psi2,psi3,psi4]
+        attention_maps=[psi4,psi3,psi2,psi1]
         # N*2*128*128
 
         return d1,attention_maps
+    
+    
+class DualEncoding_U_Net_without_asm(nn.Module):
+    
+    '''
+    Implementation of Dual encoding U-Net
+    
+        Arguments :
+            img1_ch     : Number of channels in first image input
+            img2_ch     : Number of channels in second image input
+            output_ch   : Number of channels in output input
+            dropout     : dropout rate to be applied to the connections going to latent space
+            include_ffm : Boolean value to determine if second encoding path is to be fused with latent space
+ 
+    '''
+
+    def __init__(self,img1_ch=3,img2_ch=1,output_ch=2,dropout=0.25):
+        super().__init__()
+        
+
+        self.Maxpool = nn.MaxPool2d(kernel_size=2,stride=2)
+        if dropout is not None:
+            self.dropout=torch.nn.Dropout(dropout)
+        else:
+            self.dropout=dropout
+
+        self.Conv1_encoding_1 = conv_block(ch_in=img1_ch,ch_out=64)
+        self.Conv2_encoding_1 = conv_block(ch_in=64,ch_out=128)
+        self.Conv3_encoding_1 = conv_block(ch_in=128,ch_out=256)
+        self.Conv4_encoding_1 = conv_block(ch_in=256,ch_out=512)
+
+        self.Conv5_encoding_1 = conv_block(ch_in=512,ch_out=1024)
+
+        self.Up5 = up_conv(ch_in=1024,ch_out=512)
+        self.Up_conv5 = nn.Sequential(nn.Conv2d(1024,512,kernel_size=1,stride=1,padding=0,bias=True),
+                                      nn.BatchNorm2d(512),
+                                      nn.ReLU(inplace=True))
+
+        self.Up4 = up_conv(ch_in=512,ch_out=256)
+        self.Up_conv4 = nn.Sequential(nn.Conv2d(512,256,kernel_size=1,stride=1,padding=0,bias=True),
+                                      nn.BatchNorm2d(256),
+                                      nn.ReLU(inplace=True))
+
+        self.Up3 = up_conv(ch_in=256,ch_out=128)
+        self.Up_conv3 = nn.Sequential(nn.Conv2d(256,128,kernel_size=1,stride=1,padding=0,bias=True),
+                                      nn.BatchNorm2d(128),
+                                      nn.ReLU(inplace=True))
+
+        self.Up2 = up_conv(ch_in=128,ch_out=64)
+        self.Up_conv2 = nn.Sequential(nn.Conv2d(128,64,kernel_size=1,stride=1,padding=0,bias=True),
+                                      nn.BatchNorm2d(64),
+                                      nn.ReLU(inplace=True))
+
+        self.Conv_1x1 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
+
+
+    def forward(self,x_h,x_e):
+        # encoding path
+        x_h1 = self.Conv1_encoding_1(x_h)
+        # N*64*128*128
+
+        x_h2 = self.Maxpool(x_h1)
+        x_h2 = self.Conv2_encoding_1(x_h2)
+        # N*128*64*64
+
+        x_h3 = self.Maxpool(x_h2)
+        x_h3 = self.Conv3_encoding_1(x_h3)
+        # N*256*32*32
+
+        x_h4 = self.Maxpool(x_h3)
+        x_h4 = self.Conv4_encoding_1(x_h4)
+        # N*512*16*16
+        
+      
+        if self.dropout is not None:
+            lat_spc=self.dropout(x_h4)
+            lat_spc=self.Conv5_encoding_1(lat_spc)
+        else:
+            lat_spc=self.Conv5_encoding_1(x_h4)
+            
+        lat_spc=self.Maxpool(lat_spc)
+              
+        d5 = self.Up5(lat_spc)
+        # N*512*16*16
+        
+        x4=x_h4*F.interpolate(x_e, size=d5.size()[-2:])
+        # N*512*16*16
+        
+        d5 = torch.cat((x4,d5),dim=1)
+        # N*1024*16*16
+        d5=self.Up_conv5(d5)
+        # N*512*16*16
+        
+        d4 = self.Up4(d5)
+        # N*256*32*32
+        x3=x_h3*F.interpolate(x_e, size=d4.size()[-2:])
+        # N*256*32*32
+        d4 = torch.cat((x3,d4),dim=1)
+        # N*512*32*32
+        d4 = self.Up_conv4(d4)
+        # N*256*32*32
+
+        d3 = self.Up3(d4)
+        # N*128*64*64
+        x2=x_h2*F.interpolate(x_e, size=d3.size()[-2:])
+        # N*128*64*64
+        
+        d3 = torch.cat((x2,d3),dim=1)
+        # N*256*64*64
+        d3 = self.Up_conv3(d3)
+        # N*128*64*64
+
+        d2 = self.Up2(d3)
+        # N*64*128*128
+        x1=x_h1*F.interpolate(x_e, size=d2.size()[-2:])
+        # N*64*128*128
+        d2 = torch.cat((x1,d2),dim=1)
+        # N*128*128*128
+        d2 = self.Up_conv2(d2)
+        # N*64*128*128
+
+        d1 = self.Conv_1x1(d2)
+        # N*2*128*128
+
+        return d1,[F.interpolate(x_e, size=d2.size()[-2:])\
+                   ,F.interpolate(x_e, size=d3.size()[-2:])\
+                   ,F.interpolate(x_e, size=d4.size()[-2:])\
+                   ,F.interpolate(x_e, size=d5.size()[-2:])]
     
     
 class DualEncodingDecoding_U_Net(nn.Module):
@@ -951,7 +1080,7 @@ class DualEncodingDecoding_U_Net(nn.Module):
 
         d1_encod_1=self.Conv_1x1_decod_1(d2_decod_1)
         d1_encod_2=self.Conv_1x1_decod_2(d2_decod_2)
-        attention_maps=[psi1,psi2,psi3,psi4]
+        attention_maps=[psi4,psi3,psi1,psi1]
 
 
         return torch.cat((d1_encod_1,d1_encod_2),dim=1),attention_maps

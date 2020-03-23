@@ -78,7 +78,7 @@ def create_data_vahadane(png_dir,annotation_dir,nucleus_dir,boundary_dir):
         
         loop.set_postfix(Regions=len([v.tag for v in root.iter('Vertices')]))
 
-        for v in root.iter('Vertices'):
+        for i,v in enumerate(root.iter('Vertices')):
             X=[]
             Y=[]
 

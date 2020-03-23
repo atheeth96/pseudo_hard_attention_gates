@@ -49,10 +49,11 @@ class DataSet(Dataset):
         nuclei_mask_path = os.path.join(self.nuclei_mask_dir,
                                 self.img_list[idx])
         hor_path = os.path.join(self.hor_dir,
-                                self.img_list[idx])
+                                self.img_list[idx].split('.')[0]+'.npy')
+        
         
         ver_path = os.path.join(self.ver_dir,
-                                self.img_list[idx])
+                                self.img_list[idx].split('.')[0]+'.npy')
     
  
        
@@ -70,8 +71,8 @@ class DataSet(Dataset):
         
         
         nuclei_mask=np.expand_dims(imread(nuclei_mask_path),axis=2)
-        hor_map=np.expand_dims(imread(hor_path),axis=2)
-        ver_map=np.expand_dims(imread(ver_path),axis=2)
+        hor_map=np.expand_dims(np.load(hor_path),axis=2)
+        ver_map=np.expand_dims(np.load(ver_path),axis=2)
         
         sample={'h_e': h_e,\
                 'h':h,\
@@ -97,8 +98,8 @@ class Scale(object):
         h=h/scale
         h_e=h_e/scale
         nuclei_mask=nuclei_mask/scale
-        hor_map=hor_map/scale
-        ver_map=ver_map/scale
+#         hor_map=hor_map/scale
+#         ver_map=ver_map/scale
 #         print("Scale : ",np.amax(h_e),np.amax(h),np.amax(nuclei_mask),np.amax(boundary_mask))
 
         return {'h_e': h_e,\
@@ -130,8 +131,8 @@ class ToTensor(object):
         return {'h_e': torch.from_numpy(h_e).type(torch.FloatTensor),\
                 'h':torch.from_numpy(h).type(torch.FloatTensor),\
                 'nuclei_mask':torch.from_numpy(nuclei_mask).type(torch.FloatTensor),\
-                'hor_map':torch.from_numpy(hor_map).type(torch.FloatTensor),\
-               'ver_map':torch.from_numpy(ver_map).type(torch.FloatTensor)}
+                'hor_map':torch.from_numpy(hor_map.copy()).type(torch.FloatTensor),\
+               'ver_map':torch.from_numpy(ver_map.copy()).type(torch.FloatTensor)}
     
     
 class RandomGaussionBlur(object):
@@ -356,6 +357,8 @@ def visualize_loader(loader,index=0):
             
             print("MAX VALUE : ","\nH&E",np.amax(h_e),"\nH",np.amax(h),"\nnuclei_mask",\
                   np.amax(nuclei_mask),"\nhor_map",np.amax(hor_map),"\nver_map",np.amax(ver_map))
+            print("MIN VALUE : ","\nH&E",np.min(h_e),"\nH",np.min(h),"\nnuclei_mask",\
+                  np.min(nuclei_mask),"\nhor_map",np.min(hor_map),"\nver_map",np.min(ver_map))
             
             
             h_e=h_e.transpose(1,2,0)

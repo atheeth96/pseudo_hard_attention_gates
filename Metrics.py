@@ -592,7 +592,7 @@ class HV_Loss(nn.Module):
         hover_gt=torch.cat((hor_gt,ver_gt),dim=1)
         
         bce=nn.BCELoss()(nuclei_mask,nuclei_gt)
-        mse=nn.MSELoss()(hover_map,hover_gt)
+        mse=0#nn.MSELoss()(hover_map,hover_gt)
         return self.coef*mse + bce
     
     
