@@ -13,14 +13,23 @@ import skimage
 import warnings
 warnings.filterwarnings('ignore')
 # from Models_v1 import DualEncoding_U_Net,load_model
-from Models import DualEncoding_U_Net,load_model,DualEncodingDecoding_U_Net,DualEncoding_U_Net_without_asm,AttnUNet
+from Models import DualEncoding_U_Net,load_model,DualEncodingDecoding_U_Net,DualEncoding_U_Net_without_asm,AttnUNet,U_Net
 
 from PredictNucleiMask import whole_img_pred
 from tqdm import tqdm
 
 # Script to test model
 dataset='kumar'
-model_type='no_asm'
+model_type='DualEncoding_U_Net_without_asm'
+
+model_dict={'U-Net':U_Net(img_ch=3,output_ch=2,dropout=0.5),\
+            'DualEncoding_U_Net':DualEncoding_U_Net(img1_ch=3,img2_ch=1,output_ch=2,dropout=0.25,include_ffm=False),\
+            'DualEncoding_U_Net_without_asm':DualEncoding_U_Net_without_asm(img1_ch=3,img2_ch=1,output_ch=2,dropout=0.4),\
+            'DualEncodingDecoding_U_Net':DualEncodingDecoding_U_Net(img_ch1=3,img_ch2=1,output_ch1=1,output_ch2=1,dropout=0.45),\
+            'AttnUNet':AttnUNet(img_ch=3,output_ch=2,dropout=0.5)}
+
+model=model_dict[model_type]
+            
 
 ################################################      CoNSep        ###############################################
 if dataset=='CoNSeP':
@@ -37,16 +46,12 @@ elif dataset=='kumar':
     path_h_gray='/home/vahadaneabhi01/datalab/training-assets/R_medical/atheeth/nuclei_seg/Data/kumar/processed_data/h_test_dir'
     path_h_e='/home/vahadaneabhi01/datalab/training-assets/R_medical/atheeth/nuclei_seg/Data/kumar/processed_data/h_e_test_dir'
 
-if model_type=='DEAU':
-    model=DualEncoding_U_Net(img1_ch=1,img2_ch=1,output_ch=2,dropout=None,include_ffm=False) # Define the model
+if model_type in ['DualEncoding_U_Net','DualEncodingDecoding_U_Net','DualEncoding_U_Net_without_asm']:
     input_img2_ch=1
-elif model_type=='attn_unet':
-    model= AttnUNet(img_ch=3,output_ch=2,dropout=None)
+
+else:
     input_img2_ch=None
     
-elif model_type=='no_asm':
-    model=DualEncoding_U_Net_without_asm(img1_ch=3,img2_ch=1,output_ch=2,dropout=0.4)
-    input_img2_ch=1
     
 
 #Attention and DEAU model dir

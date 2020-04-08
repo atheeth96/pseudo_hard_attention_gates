@@ -19,6 +19,7 @@ app/__pycache__/
 *.sqlite
 *.xml
 *.zip
+*.ipynb
 unet_nuclear_seg.ipynb
 nuclei_seg_v1.ipynb
 #folders

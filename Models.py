@@ -213,7 +213,7 @@ class U_Net(nn.Module):
         self.Conv_1x1 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
 
 
-    def forward(self,x):
+    def forward(self,x,x_2):
         # encoding path
         x1 = self.Conv1(x)
 
@@ -298,7 +298,7 @@ class AttnUNet(nn.Module):
         self.Conv_1x1 = nn.Conv2d(64,output_ch,kernel_size=1,stride=1,padding=0)
 
 
-    def forward(self,x):
+    def forward(self,x,x_2):
         # encoding path
         x1 = self.Conv1(x)
 

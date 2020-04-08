@@ -2,6 +2,7 @@ import skimage
 from skimage.io import imread,imsave
 from skimage import morphology
 from skimage.filters import threshold_otsu
+from skimage.measure import label, regionprops
 from skimage import img_as_uint
 from tqdm import tqdm
 import os 
@@ -10,6 +11,7 @@ import math
 from skimage import img_as_ubyte
 from skimage.transform import resize
 
+import re
 
 
 import torch
@@ -20,6 +22,19 @@ import pandas as pd
 import random
 import matplotlib.pyplot as plt
 import cv2
+from skimage.morphology import watershed,remove_small_holes,remove_small_objects,closing,area_closing
+import scipy.ndimage as ndimage
+from scipy import ndimage as ndi
+from scipy.ndimage.morphology import (
+                                    binary_erosion,
+                                    binary_dilation, 
+                                    binary_fill_holes,
+                                    distance_transform_cdt,
+                                    distance_transform_edt)
+from skimage.feature import peak_local_max
+
+import scipy.io
+
 
 
 # def whole_dice_metric(y_pred,y_true):
@@ -212,97 +227,105 @@ def whole_img_pred(image1_path,image2_path,pred_dir_name,model,input_img1_ch=3,i
 
 
 
-# def multiple_erosion(img,iter=5):
-#     for j in (range(5)):
-#         img=morphology.binary_erosion(img, selem=morphology.selem.disk(1))
-#     return img
+def multiple_erosion(img,iter_count=5,selem=morphology.selem.disk(1)):
+    for j in (range(iter_count)):
+        img=morphology.binary_erosion(img, selem=selem)
+    return img
 
-# def multiple_dialte(img,iter=5):
-#     for j in (range(5)):
-#         img=morphology.binary_dilation(img, selem=morphology.selem.disk(1))
-#     return img
+def multiple_dialte(img,iter_count=5,selem=morphology.selem.disk(1)):
+    for j in (range(iter_count)):
+        img=morphology.binary_dilation(img, selem=selem)
+    return img
 
-# def post_process(PRED_PATH,patient_name,img_list,df_summary,df_whole,processed_dir,threshold='otsu',print_prompt=False):
-#     qc_path='Dapi_patient_data/{}/OverallQCMasks'.format(patient_name)
-    
-    
-    
-#     path_to_patient_data='Dapi_patient_data/{}'.format(patient_name)
-#     current_no_entries=len(df_summary)
-    
-#     if not os.path.exists(processed_dir):
-#         os.mkdir(processed_dir)
+def coord2array(coord):
+    x=[]
+    y=[]
+    for i in coord:
+        x.append(i[0])
+        y.append(i[1])
+    return (x,y)
+def sort_n_array(img):
+    img_labels=label(img)
+    img_regions=regionprops(img_labels)
+    final_gt=np.zeros_like(img)
+    for i,region in enumerate(img_regions):
+        coordinates=coord2array(list(region.coords))
+        final_gt[coordinates]=i+1
         
-#     selected_roi=random.choice(img_list)
-#     selected_ip=imread(path_to_patient_data+'/ROI/'+selected_roi)
-#     selected_prediction=imread(path_to_patient_data+'/predictions/nuclei_'+selected_roi.split('.')[0]+'.png')
-#     selected_gt=imread(path_to_patient_data+'/nuc_mask/'+selected_roi)
-#     avg_error=0
-#     loop=tqdm(img_list)
-#     for i,img_name in enumerate(loop):
-#         loop.set_description('Image : {} of Slide {}'.format(img_name.split('.')[0],patient_name))
-#         qc_file_path=os.path.join(qc_path,'OverallQCMask_{}_{}.tif'.format(patient_name,img_name.split('.')[0]))
-#         qc_mask=imread(qc_file_path)
-#         qc_mask[qc_mask!=0]=1
-#         bound_img_path=os.path.join(PRED_PATH,'bound_'+img_name.split('.')[0]+'.png')
-#         bound_img=imread(bound_img_path)
-#         if type(threshold)==float:
-#             thresh_bound=threshold*255#threshold_otsu(bound_img)
+    return final_gt
 
-#             thresh_nuclei=threshold*255#threshold_otsu(nuc_img)
-#         else:
-#             thresh_bound=threshold_otsu(bound_img)
 
-#             thresh_nuclei=threshold_otsu(nuc_img)
-        
-#         bound_img=bound_img>thresh_bound
-        
-        
-#         nuc_img_path=os.path.join(PRED_PATH,'nuclei_'+img_name.split('.')[0]+'.png')
-#         nuc_img=imread(nuc_img_path)
-#         nuc_img=nuc_img>thresh_nuclei
-        
-        
+
+def watershed_seg(nuclei,boundary):
     
-#         bound_img=multiple_dialte(bound_img)
-#         bound_img=multiple_erosion(bound_img)
+    def gen_inst_dst_map(nuclei):  
+        shape = nuclei.shape[:2] # HW
+        labeled_img=label(nuclei)
+        labeled_img = remove_small_objects(labeled_img, min_size=50)
+        regions=regionprops(labeled_img)
+    
+
+        canvas = np.zeros(shape, dtype=np.uint8)
+        for region in regions:
+            coordinates=coord2array(list(region.coords))
+            nuc_map=np.zeros(shape)
+            nuc_map[coordinates]=1  
+            nuc_map=morphology.binary_dilation(nuc_map, selem=morphology.selem.disk(2)).astype(np.uint8)
+            nuc_dst = ndi.distance_transform_edt(nuc_map)
+            nuc_dst = 255 * (nuc_dst / np.amax(nuc_dst))       
+            canvas += nuc_dst.astype('uint8')
+        return canvas
+    
+    nuclei=nuclei>0.45*255#threshold_otsu(nuclei)
+    
+    
+    nuclei=nuclei.astype(np.uint8)
+    
+    
+    nuclei=area_closing(nuclei,20)
+    nuclei=closing(nuclei.astype(np.uint8),morphology.selem.square(2))
+    nuclei = binary_fill_holes(nuclei)
+
+    nuclei=ndimage.binary_fill_holes(nuclei).astype(int)
+    
+
+    
+    boundary=boundary>0.3*255#120
+    boundary=boundary.astype(np.uint8)
+    
+    
+    nuclei_seeds_ini=nuclei-boundary
+    nuclei_seeds_ini[np.where(nuclei_seeds_ini<=0)]=0
+    nuclei_seeds_ini[np.where(nuclei_seeds_ini>0)]=1
+    
+    nuclei_seeds=morphology.binary_erosion(nuclei_seeds_ini, selem=morphology.selem.disk(2)).astype(np.uint8)
+    
+
+    labeled_img=label(nuclei_seeds)
+    labeled_img = remove_small_objects(labeled_img, min_size=50)
+    
+    regions=regionprops(labeled_img)
+
+    final_image=np.zeros_like(nuclei_seeds_ini)
+    distance = gen_inst_dst_map(nuclei_seeds_ini)
+    markers = ndi.label(nuclei_seeds)[0]
+    final_image = watershed(-distance, markers, mask=nuclei,watershed_line=False)
+    return final_image
+
+
+def retrive_gt(path,img_name):
+    if 'CPM_17' in path:
+        f = open(path+'_'.join(img_name.split('_')[1:]).split('.')[0]+'_mask.txt', 'r')
+        x = f.readlines()
+
+        gt=np.array([int(a) for a in x[1:]]).reshape(list(map(int, re.findall('\d+', x[0]))))
+        return gt
+    elif 'CoNSeP' in path:
+        gt=np.load(path+'_'.join(img_name.split('_')[1:]).split('.')[0]+'.npy')[:,:,0]
+        return gt
         
-#         nuc_img=multiple_erosion(nuc_img)
-#         nuc_img=multiple_dialte(nuc_img)
+    elif 'kumar' in path:
+        return imread(path+img_name.split('.')[0].split('_')[1:][0]+'.tif')
         
-#         comb_img=nuc_img^bound_img
-#         bound_coor=np.where(bound_img==1)
-#         comb_img[bound_coor]=0
-#         comb_img=multiple_erosion(comb_img,3)
-#         comb_img=multiple_dialte(comb_img,3)
-        
-#         gt=int(df_whole[(df_whole['ROI']==img_name.split('.')[0]) & (df_whole['Slide']==patient_name)]["ALLCELLS"])
-        
-#         imsave(processed_dir+'/'+img_name,img_as_uint(comb_img))
-        
-#         if img_name==selected_roi:
-#             f, ax = plt.subplots(1,4,figsize=(30,30))
-#             plt.rcParams.update({'font.size': 32})
-#             ax[0].imshow(selected_ip,cmap='gray')
-#             ax[0].title.set_text('Input DAPI image')
-#             ax[1].imshow(selected_prediction,cmap='gray')
-#             ax[1].title.set_text('Model Prediction')
-#             ax[2].imshow(comb_img,cmap='gray')
-#             ax[2].title.set_text('Final output')
-#             ax[3].imshow(selected_gt,cmap='gray')
-#             ax[3].title.set_text('GT')
-            
-#         count_img=comb_img.copy()
-#         count_img=count_img&qc_mask
-        
-#         labels=skimage.measure.label(count_img)
-#         df_summary.loc[current_no_entries+i+1]=[patient_name,img_name.split('.')[0],np.amax(labels),gt,(gt-np.amax(labels))/gt]
-        
-#         if print_prompt:
-#             print("For RoI {} the predicted count is : {},and the GT  is : {}\n".format(img_name.split('.')[0],np.amax(labels),gt)\
-#                   +Color.RED+"Error rate {}".format((gt-np.max(labels))/gt)+Color.END)
-#         avg_error+=np.abs((gt-np.max(labels)))/gt
-#     if print_prompt:
-#         print("avg error : ",avg_error/(i+1))
-                                       
-#     return df_summary
+    else:
+        print("Wrong path")

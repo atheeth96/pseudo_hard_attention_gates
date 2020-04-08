@@ -1,3 +1,6 @@
+import sys
+# insert at 1, 0 is the script path (or '' in REPL)
+sys.path.insert(1, '/home/vahadaneabhi01/datalab/training-assets/R_medical/atheeth/nuclei_seg')
 import numpy as np
 import os
 import imutils

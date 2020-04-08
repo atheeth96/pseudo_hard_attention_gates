@@ -41,6 +41,19 @@ def remap_label(pred, by_size=False):
 
 
 
+def whole_dice_metric(y_pred,y_true):
+    smooth = 10e-16
+    # single image so just roll it out into a 1D array
+    
+    m1 =np.reshape(y_pred,(-1))/255
+    m2 =np.reshape(y_true,(-1))/255
+    
+    
+    intersection = (m1 * m2)
+
+    score = 2. * (np.sum(intersection) + smooth) / (np.sum(m1) +(np.sum(m2) + smooth))
+        
+    return score
 
 
 def get_fast_aji(true, pred):
