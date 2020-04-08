@@ -3,9 +3,9 @@ An pytorch implementation of novel dual encoder architecture for nuclei segmenta
 
 # Implementation details
 
-**Library** : Pytorch version 1.3.1
-**GPU** : Tesla V100-SXM2-32GB
-**Number of epochs** : 200
+**Library** : Pytorch version 1.3.1<br/>
+**GPU** : Tesla V100-SXM2-32GB<br/>
+**Number of epochs** : 200<br/>
 
 # Results
  subject to publication in MICCAI 2020
