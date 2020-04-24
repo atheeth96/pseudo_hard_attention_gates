@@ -15,6 +15,7 @@ app/__pycache__/
 *.npy
 #files
 *.pdf
+*v1*
 *.csv
 *post_proc*
 *.sql
