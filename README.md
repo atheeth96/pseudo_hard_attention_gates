@@ -8,4 +8,4 @@ An pytorch implementation of novel dual encoder architecture for nuclei segmenta
 **Number of epochs** : 200<br/>
 
 # Results
- subject to publication in MICCAI 2020
+ subject to publication in EMBC 2021
